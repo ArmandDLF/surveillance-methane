@@ -29,9 +29,32 @@ def selection(jour, temps, lat, lon):
     orbital=DATA_DIR + '/' + 'data' + '/' + str(jour) + '/' + files[i-1]
     ds=xr.open_dataset(orbital, group='PRODUCT')
     df = ds[['latitude', 'longitude', 'methane_mixing_ratio_bias_corrected']].to_dataframe().reset_index()
-    print(df.columns)
-    return ds, df
-print(selection(13, 110000, 0.0, 0.0))
+    df['distance_lat']=distance(df['latitude'],lon, lat, lon)
+    df['distance_lon']=distance(lat,df['longitude'], lat, lon)
+    df = df[(df['distance_lat'] <= taillecarre) & (df['distance_lon'] <= taillecarre)]
+    ds1 = df.set_index(['methane_mixing_ratio_bias_corrected', 'latitude', 'longitude']).to_xarray()
+    return ds1
+
+ds=selection(13, 110000, 80.0, 0.0)
+def apply_log10(data):
+    # let's be careful with zeros, and replace with NaNs
+    buf = np.copy(data)
+    buf[buf==0] = np.nan
+    out = np.log10(buf)
+    return out
+
+ds['log10_of_emissions'] = xr.apply_ufunc(apply_log10, # first function name
+                                        ds.methane_mixing_ratio_bias_corrected) # then arguments
+fig = plt.figure()
+ax = plt.subplot(1,1,1,projection=ccrs.PlateCarree())
+ds.log10_of_emissions.plot(x='lon',
+                           y='lat',
+                           antialiased=True,
+                           cmap='jet',
+                           transform=ccrs.PlateCarree(),
+                           vmin=-2,
+                          vmax=5)
+
 
 '''
 import pandas as pd
