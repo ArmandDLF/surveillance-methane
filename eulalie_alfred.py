@@ -151,11 +151,18 @@ def selection_carre(jour, temps, lat, lon):
 selection_carre(13, 10000, 80.0, 0.0)
 
 def distance(lat1d, lon1d, lat2d, lon2d):
-    lat1 = latd
+    lat1 = lat1d*np.pi/180
+    lat2 = lat2d*np.pi/180
+    lon1 = lon1d*np.pi/180
+    lon2 = lon2d*np.pi/180
+    return 2*Rterre*np.arcsin(np.sqrt((np.sin((lat2-lat1)/2))**2 + np.cos(lat1)*np.cas(lat2)*(np.sin((lon2-lon1)/2))**2))
+
+
+Rterre = 6378  # km
+taillecarre = 250  # km
 
 def selection_cercle(jour, temps, lat, lon):
-    Rterre = 6378  # km
-    taillecarre = 250  # km
+
 
     files=os.listdir(DATA_DIR + '/' + 'data' + '/' + str(jour))
     tmax=0
