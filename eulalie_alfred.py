@@ -5,9 +5,20 @@ import cartopy.crs as ccrs
 import numpy as np
 import os
 
-Rterre=6378 #km
+Rterre=6371 #km
 taillecarre=250 #km
 DATA_DIR = '/Users/alfre/Desktop/Hackaton/TROPOMI_Mines/work_data/official_product'
+
+def distance(lat1d, lon1d, lat2d, lon2d):
+    lat1=lat1d*np.pi/180
+    lat2=lat2d*np.pi/180
+    lon1=lon1d*np.pi/180
+    lon2=lon2d*np.pi/180
+    return 2*Rterre*np.arcsin(np.sqrt((np.sin((lat2-lat1)/2))**2 + np.cos(lat1)*np.cos(lat2)*(np.sin((lon2 - lon1)/2))**2))
+
+print(distance(15,20,30,80))
+
+
 def selection(jour, temps, lat, lon):
     files=os.listdir(DATA_DIR + '/' + 'data' + '/' + str(jour))
     tmax=0
@@ -17,22 +28,12 @@ def selection(jour, temps, lat, lon):
         i += 1
     orbital=DATA_DIR + '/' + 'data' + '/' + str(jour) + '/' + files[i-1]
     ds=xr.open_dataset(orbital, group='PRODUCT')
+    df = ds[['latitude', 'longitude', 'methane_mixing_ratio_bias_corrected']].to_dataframe().reset_index()
+    print(df.columns)
+    return ds, df
+print(selection(13, 110000, 0.0, 0.0))
 
-    ds.set_index(index=['latitude', 'longitude']).unstack('index')
-
-    lat_max=min(lat+(taillecarre*180/(Rterre*np.pi)), 90)
-    lat_min=max(lat-(taillecarre*180/(Rterre*np.pi)), -90)
-    lon_max=lon+taillecarre*180/(Rterre*np.pi*np.sin(lat))
-    if lon_max > 180:
-        lon_max=lon_max%180 - 180
-    lon_min=lon-taillecarre*180/(Rterre*np.pi*np.sin(lat))
-    if lon_min < -180:
-        lon_min=lon_min%180 + 180
-    carree=ds.sel(latitude=slice(lat_min, lat_max), longitude=slice(lon_min, lon_max))
-    return(ds, carree)
-
-selection(13, 110000, 0.0, 0.0)
-
+'''
 import pandas as pd
 import xarray as xr
 import matplotlib.pyplot as plt
@@ -43,7 +44,7 @@ import os
 Rterre=6378 #km
 taillecarre=250 #km
 DATA_DIR = '/Users/alfre/Desktop/Hackaton/TROPOMI_Mines/work_data/official_product'
-def selection(jour, temps, lat, lon):
+def selection2(jour, temps, lat, lon):
     files = os.listdir(os.path.join(DATA_DIR, 'data', str(jour)))
     tmax = 0
     i = 0
@@ -79,7 +80,7 @@ def selection(jour, temps, lat, lon):
 
     return ds, carree
 
-ds1=selection(13, 110000, 0.0, 0.0)[1]
+ds1=selection2(13, 110000, 0.0, 0.0)[1]
 ds1
 def apply_log10(data):
     buf = np.copy(data)
@@ -100,3 +101,4 @@ ds1.log10_of_emissions.plot(x='lon',
                            transform=ccrs.PlateCarree(),
                            vmin=-2,
                           vmax=5)
+'''
