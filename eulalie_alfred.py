@@ -16,7 +16,13 @@ def distance(lat1d, lon1d, lat2d, lon2d):
     lon2=lon2d*np.pi/180
     return 2*Rterre*np.arcsin(np.sqrt((np.sin((lat2-lat1)/2))**2 + np.cos(lat1)*np.cos(lat2)*(np.sin((lon2 - lon1)/2))**2))
 
-print(distance(15,20,30,80))
+def apply_log10(data):
+    # let's be careful with zeros, and replace with NaNs
+    buf = np.copy(data)
+    buf[buf==0] = np.nan
+    out = np.log10(buf)
+    return out
+
 
 
 def selection(jour, temps, lat, lon):
@@ -29,33 +35,16 @@ def selection(jour, temps, lat, lon):
     orbital=DATA_DIR + '/' + 'data' + '/' + str(jour) + '/' + files[i-1]
     ds=xr.open_dataset(orbital, group='PRODUCT')
     df = ds[['latitude', 'longitude', 'methane_mixing_ratio_bias_corrected']].to_dataframe().reset_index()
-    df['distance_lat']=distance(df['latitude'],lon, lat, lon)
-    df['distance_lon']=distance(lat,df['longitude'], lat, lon)
+    df['distance_lat'] = abs(distance(df['latitude'], lon, lat, lon))
+    df['distance_lon'] = abs(distance(lat, df['longitude'], lat, lon))
     df = df[(df['distance_lat'] <= taillecarre) & (df['distance_lon'] <= taillecarre)]
-    ds1 = df.set_index(['methane_mixing_ratio_bias_corrected', 'latitude', 'longitude']).to_xarray()
+    ds1 = df.set_index(['latitude', 'longitude']).to_xarray()
+
+    # Ajoute la variable log10 transformée
+    ds1['log10_ch4'] = xr.apply_ufunc(apply_log10, ds1['methane_mixing_ratio_bias_corrected'])
     return ds1
-
-ds=selection(13, 110000, 80.0, 0.0)
-def apply_log10(data):
-    # let's be careful with zeros, and replace with NaNs
-    buf = np.copy(data)
-    buf[buf==0] = np.nan
-    out = np.log10(buf)
-    return out
-
-ds['log10_of_emissions'] = xr.apply_ufunc(apply_log10, # first function name
-                                        ds.methane_mixing_ratio_bias_corrected) # then arguments
-fig = plt.figure()
-ax = plt.subplot(1,1,1,projection=ccrs.PlateCarree())
-ds.log10_of_emissions.plot(x='lon',
-                           y='lat',
-                           antialiased=True,
-                           cmap='jet',
-                           transform=ccrs.PlateCarree(),
-                           vmin=-2,
-                          vmax=5)
-
-
+ds = selection(13, 110000, 80.0, 30.0)
+print(ds, ds['log10_ch4'], ds['distance_lat'])
 '''
 import pandas as pd
 import xarray as xr
