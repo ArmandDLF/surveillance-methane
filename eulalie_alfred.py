@@ -100,3 +100,87 @@ ds1.log10_of_emissions.plot(x='lon',
                            transform=ccrs.PlateCarree(),
                            vmin=-2,
                           vmax=5)
+
+
+#### les trucs qui fonctionnent
+
+import pandas as pd
+import xarray as xr
+import matplotlib.pyplot as plt
+import cartopy.crs as ccrs
+import os
+
+def selection_carre(jour, temps, lat, lon):
+    Rterre = 6378  # km
+    taillecarre = 250  # km
+
+    files=os.listdir(DATA_DIR + '/' + 'data' + '/' + str(jour))
+    tmax=0
+    i = 0
+    while temps > tmax:
+        tmax=int(files[i][45:51])
+        i += 1
+    orbital=DATA_DIR + '/' + 'data' + '/' + str(jour) + '/' + files[i-1]
+    ds=xr.open_dataset(orbital, group='PRODUCT')
+    
+    lat_max = min(lat + (taillecarre * 180 / (Rterre * np.pi)), 90)
+    lat_min = max(lat - (taillecarre * 180 / (Rterre * np.pi)), -90)
+
+    lat_rad = lat * np.pi / 180
+    lon_delta = taillecarre * 180 / (Rterre * np.pi * np.cos(lat_rad))
+    lon_max = (lon + lon_delta + 180) % 360 - 180
+    lon_min = (lon - lon_delta + 180) % 360 - 180
+
+    lat = ds['latitude']
+    lon = ds['longitude']
+
+    mask = (
+        (lat >= lat_min) & (lat <= lat_max) &
+        (lon >= lon_min) & (lon <= lon_max)
+    )
+
+    # Vérifier qu'au moins un point est dans le masque
+    if not mask.any().item():
+        print("⚠️ Aucun point trouvé dans la zone sélectionnée.")
+        return ds, None
+
+    carre = ds.where(mask, drop=True)
+
+    return ds, carre
+
+selection_carre(13, 10000, 80.0, 0.0)
+
+def distance(lat1d, lon1d, lat2d, lon2d):
+    lat1 = latd
+
+def selection_cercle(jour, temps, lat, lon):
+    Rterre = 6378  # km
+    taillecarre = 250  # km
+
+    files=os.listdir(DATA_DIR + '/' + 'data' + '/' + str(jour))
+    tmax=0
+    i = 0
+    while temps > tmax:
+        tmax=int(files[i][45:51])
+        i += 1
+    orbital=DATA_DIR + '/' + 'data' + '/' + str(jour) + '/' + files[i-1]
+    ds=xr.open_dataset(orbital, group='PRODUCT')
+
+    ds['log10_of_emissions'] = xr.apply_ufunc(apply_log10, # first function name
+                                        ds.emissions) 
+
+    mask = (
+        
+    )
+
+    # Vérifier qu'au moins un point est dans le masque
+    if not mask.any().item():
+        print("⚠️ Aucun point trouvé dans la zone sélectionnée.")
+        return ds, None
+
+    cercle = ds.where(mask, drop=True)
+
+    return ds, cercle
+
+selection_cercle(13, 10000, 80.0, 0.0)
+
