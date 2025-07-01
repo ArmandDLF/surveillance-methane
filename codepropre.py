@@ -4,39 +4,81 @@ import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 import os
 import numpy as np
-import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
+
 import cartopy.feature as cfeature
 
+DATA_DIR = 'C:/Users/eulal/cours-info/tutorial_TROPOMI_Mines/work_data/official_product' 
+jour = 13
 
-Rterre = 6378  # km
-taillecarre = 250  # km
-DATA_DIR = '/Users/alfre/Desktop/Hackaton/TROPOMI_Mines/work_data/official_product'
-def selection_carre(jour, lat, lon):
-    files = os.listdir(f"{DATA_DIR}/data/{jour}")
-    files.sort()
-    orbital = f"{DATA_DIR}/data/{jour}/{files[0]}"
-    ds = xr.open_dataset(orbital, group='PRODUCT')
-    # Calcul des bornes géographiques
-    lat_delta = taillecarre * 180 / (Rterre * np.pi)
-    lat_max = min(lat + lat_delta, 90)
-    lat_min = max(lat - lat_delta, -90)
+def distance(lat1d, lon1d, lat2d, lon2d):
+    lat1=lat1d*np.pi/180
+    lat2=lat2d*np.pi/180
+    lon1=lon1d*np.pi/180
+    lon2=lon2d*np.pi/180
+    return 2*Rterre*np.arcsin(np.sqrt((np.sin((lat2-lat1)/2))**2 + np.cos(lat1)*np.cos(lat2)*(np.sin((lon2 - lon1)/2))**2))
 
-    lat_rad = lat * np.pi / 180
-    lon_delta = taillecarre * 180 / (Rterre * np.pi * np.cos(lat_rad))
-    lon_max = (lon + lon_delta + 180) % 360 - 180
-    lon_min = (lon - lon_delta + 180) % 360 - 180
-    # Masque
-    mask = (
-        (ds['latitude'] >= lat_min) & (ds['latitude'] <= lat_max) &
-        (ds['longitude'] >= lon_min) & (ds['longitude'] <= lon_max)
-    )
 
-    if not mask.any().item():
-        print("⚠️ Aucun point trouvé dans la zone sélectionnée.")
-        return ds, None
-    carre = ds.where(mask, drop=True)
-    return ds, carre
+def selection_carre(jour, temps, lat, lon):
+    Rterre = 6378  # km
+    taillecarre = 250  # km
+
+    liste = []
+
+    files=os.listdir(DATA_DIR + '/' + 'data' + '/' + str(jour))
+    for i in range(len(files)):
+        orbital=DATA_DIR + '/' + 'data' + '/' + str(jour) + '/' + files[i]
+        ds = xr.open_dataset(orbital, group='PRODUCT')
+    
+        lat_max = min(lat + (taillecarre * 180 / (Rterre * np.pi)), 90)
+        lat_min = max(lat - (taillecarre * 180 / (Rterre * np.pi)), -90)
+
+        lat_rad = lat * np.pi / 180
+        lon_delta = taillecarre * 180 / (Rterre * np.pi * np.cos(lat_rad))
+        lon_max = (lon + lon_delta + 180) % 360 - 180
+        lon_min = (lon - lon_delta + 180) % 360 - 180
+
+        mask = ((ds['latitude'] >= lat_min) & (ds['latitude'] <= lat_max) &
+             (ds['longitude'] >= lon_min) & (ds['longitude'] <= lon_max)
+           )
+
+    # Vérifier qu'au moins un point est dans le masque
+        if not mask.any().item():
+            print("⚠️ Aucun point trouvé dans la zone sélectionnée.")
+            return ds, None
+
+        carre = ds.where(mask, drop=True)
+        liste.append(carre)
+
+    return liste
+
+donnees = selection_carre(13, 100000, 80.0, 50.0)
+
+def apply_log10(data):
+    # let's be careful with zeros, and replace with NaNs
+    buf = np.copy(data)
+    buf[buf==0] = np.nan
+    out = np.log10(buf)
+    return out
+
+# apply function and put in new 'log10_of_emissions' variable
+# HERE, we create a new variable in the datase
+
+fig = plt.figure()
+ax = plt.subplot(1,1,1,projection=ccrs.PlateCarree())
+for i in range(len(donnees)):
+    if type(donnees[i]) != type(None):
+        donnees[i]['log10_of_emissions'] = xr.apply_ufunc(apply_log10, # first function name
+                                        donnees[i].methane_mixing_ratio_bias_corrected)
+        donnees[i].log10_of_emissions.plot(x='longitude',
+                                y='latitude',
+                                antialiased=True,
+                                cmap='jet',
+                                transform=ccrs.PlateCarree(),
+                                vmin=2,
+                                vmax=4)
+
+
 
 ds=selection_carre(13, 50.0, 0.0)[0]
 carre=selection_carre(13, 50.0, 0.0)[1]
