@@ -18,10 +18,10 @@ def distance(lat1d, lon1d, lat2d, lon2d):
     lon2=lon2d*np.pi/180
     return 2*Rterre*np.arcsin(np.sqrt((np.sin((lat2-lat1)/2))**2 + np.cos(lat1)*np.cos(lat2)*(np.sin((lon2 - lon1)/2))**2))
 
+Rterre = 6378  # km
+taillecarre = 250  # km
 
 def selection_carre(jour, temps, lat, lon):
-    Rterre = 6378  # km
-    taillecarre = 250  # km
 
     liste = []
 
@@ -43,12 +43,9 @@ def selection_carre(jour, temps, lat, lon):
            )
 
     # Vérifier qu'au moins un point est dans le masque
-        if not mask.any().item():
-            print("⚠️ Aucun point trouvé dans la zone sélectionnée.")
-            return ds, None
-
-        carre = ds.where(mask, drop=True)
-        liste.append(carre)
+        if mask.any().item():
+            carre = ds.where(mask, drop=True)
+            liste.append(carre)
 
     return liste
 
