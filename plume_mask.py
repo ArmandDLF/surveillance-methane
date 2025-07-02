@@ -1,17 +1,11 @@
 import xarray as xr
 import numpy as np
 import scipy as sc
+from eulalie_alfred import distance
 
 METHANE_COL = "methane_mixing_ratio_bias_corrected_destriped"
 FACTEUR = 1.25
 MAX_ITERATION = 20
-
-
-def dist2(lat1, lat2, lon1, lon2):
-    """
-    Distance naïve entre les coordonnées
-    """
-    return (lat1 - lat2)**2 + (lon1 - lon2)**2
 
 
 def source(dataset):
@@ -20,11 +14,11 @@ def source(dataset):
     """
     
     lat_s, lon_s = dataset.attrs['SRON plume source lat,lon']
-    dataset["dist2"] = xr.apply_ufunc(dist2, lat_s, dataset.latitude, lon_s, dataset.longitude)
+    dataset["dist"] = xr.apply_ufunc(distance, lat_s, lon_s, dataset.latitude, dataset.longitude)
 
     print("*"*20)
-    argmin = dataset["dist2"].argmin(...)
-    dataset.drop_vars(["dist2"])
+    argmin = dataset["dist"].argmin(...)
+    dataset.drop_vars(["dist"])
     return dataset.isel(argmin)
 
 
