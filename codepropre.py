@@ -6,6 +6,7 @@ import os
 import numpy as np
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
+import destriping
 
 DATA_DIR = r'C:\Users\alfre\Desktop\Hackaton\TROPOMI_Mines\work_data\official_product'
 jour = 13
@@ -243,6 +244,7 @@ def panaches():
                 maxi = non_nan_count
                 arg_max = liste[j]
 
+        destriping.destripe(arg_max)
         arg_max.to_netcdf("source"+str(i)+".nc")
         
         fig1 = tracer_methane(arg_max)
