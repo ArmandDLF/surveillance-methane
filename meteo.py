@@ -4,6 +4,26 @@ import numpy as np
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 import scipy 
+import xarray as xr
+
+from codepropre import donnees
+grid = donnees
+square = 250 #size of the square that will be studied in kilometers
+Rterre = 6378
+
+def selection_carre(lat, lon):
+    
+    lat_max = min(lat + (square * 180 / (Rterre * np.pi)), 90)
+    lat_min = max(lat - (square * 180 / (Rterre * np.pi)), -90)
+
+    lat_rad = lat * np.pi / 180
+    lon_delta = square * 180 / (Rterre * np.pi * np.cos(lat_rad))
+    lon_max = (lon + lon_delta + 180) % 360 - 180
+    lon_min = (lon - lon_delta + 180) % 360 - 180
+
+    return [lon_min, lon_max, lat_min, lat_max]
+
+
 
 # initialize ee API library
 ee.Initialize()
@@ -18,42 +38,24 @@ SATELLITES["ERA5"]  = ['ECMWF/ERA5_LAND/HOURLY', 11132, "surface_pressure", "u_c
 #name, pixel_resolution, pressure, east wind component, north wind component
 SATELLITES["GEOS"] = ['NASA/GEOS-CF/v1/rpl/tavg1hr', 27750, "PS", "U10M", "V10M"]
 SATELLITES["GFS"] =["NOAA/GFS0P25", 27830, None, "u_component_of_wind_10m_above_ground", "v_component_of_wind_10m_above_ground"]
+ 
 
-
-def get_meteo_geos(lat, long, date="2023-06-27", time=16, plot=False):
+def get_meteo_geos(lat : float, long : float, sat_grid, date="2023-06-27", time=16, plot=False):
 
     hour = time
-    square = 250 #size of the square that will be studied in kilometers
-    delta_angle =  (square/6378)*(180/np.pi)
-    # Clamp latitude to [-90, 90]
-    lat_min = max(-90, lat - delta_angle)
-    lat_max = min(90, lat + delta_angle)
-
-    # Longitude delta depends on latitude (converges at poles)
-    if abs(lat) + delta_angle >= 90:
-        # At or near the poles, longitude is undefined, so use full range
-        long_min = -180
-        long_max = 180
-    else:
-        delta_long = delta_angle / np.cos(np.radians(lat))
-        long_min = (long - delta_long + 180) % 360 - 180
-        long_max = (long + delta_long + 180) % 360 - 180
-
-    ext = [long_min, long_max, lat_min, lat_max] 
+    ext = selection_carre(lat, long)
     rectangle = [[ext[0],ext[2]],
             [ext[1],ext[2]],
             [ext[1],ext[3]],
             [ext[0],ext[3]],
             [ext[0],ext[2]]]
 
-    data = []
-
     #TEST WITH GEOS
-    sat = SATELLITES["GEOS"]
-    name = sat[0]
-    resolution = sat[1]
-    ind_pressure = sat[2]
-    ind_u, ind_v = sat[3], sat[4]
+
+    name = 'NASA/GEOS-CF/v1/rpl/tavg1hr'
+    resolution = 27750
+    ind_pressure = 'PS'
+    ind_u, ind_v = 'U10M', 'V10M'
 
     ee_rect = ee.Geometry.Polygon(rectangle, None, False)
     datenext="2023-06-28"
@@ -71,26 +73,30 @@ def get_meteo_geos(lat, long, date="2023-06-27", time=16, plot=False):
     ds_time = ds.isel(time=hour)
     data = ds_time[[ind_pressure, ind_u, ind_v]]
 
-    if plot:
 
+    # Interpolate data to the sat_grid's longitude and latitude
+    data_interp = data.interp(
+        x=np.sort(sat_grid["longitude"].values.flatten()),
+        y=np.sort(sat_grid["latitude"].values.flatten()),
+        method="linear"
+    )
+
+    if plot:
         fig, axes = plt.subplots(
             1, 3,
             figsize=(15, 5),
             subplot_kw={'projection': ccrs.PlateCarree()}
         )
 
-        # Set the super title (move down `top` to make space)
         fig.suptitle(f"GEOS - Time: {date}T{time}h", fontsize=16)
         fig.subplots_adjust(top=0.85)  # Leave space for suptitle
 
-        # Titles and data indices for the subplots
         titles = ["Pressure (Pa)", "Eastward wind (m/s)", "Northward wind (m/s)"]
         data_indices = [ind_pressure, ind_u, ind_v]
 
-        # Plot each subplot
         for ax, title, idx in zip(axes, titles, data_indices):
             ax.set_title(title, fontsize=12, pad=15)
-            data[idx].plot(
+            data_interp[idx].plot(
                 x='x',
                 y='y',
                 antialiased=True,
@@ -103,11 +109,13 @@ def get_meteo_geos(lat, long, date="2023-06-27", time=16, plot=False):
         plt.tight_layout(w_pad=2)
         plt.show()
 
+    return data_interp
 
-    return data
 
-data_geos = get_meteo_geos(36, 62, plot=True)
-print(data_geos)
+
+data = get_meteo_geos(-25.6, 28.67, grid, plot=True)
+print(data)
+
 
 
 
@@ -198,28 +206,3 @@ data_era = get_meteo(0, 20, "2025-06-10", 12, plot=True)
 print(data_era)
 
 
-    """
-    ###TEST FOR ALL SATS
-    for sat in SATS:
-        
-        name = SATELLITES[sat][0]
-        resolution = SATELLITES[sat][1]
-        ind_pressure = SATELLITES[sat][2]
-        ind_u, ind_v = SATELLITES[sat][3], SATELLITES[sat][4]
-
-        ee_rect = ee.Geometry.Polygon(rectangle, None, False)
-        ee_date = ee.Date(date)
-
-        collection_filtered_sorted = (ee.ImageCollection(name)
-                              .filterBounds(ee_rect)
-                              .filterDate(ee_date)
-                              .select([resolution])).sort('system:time_start')
-        
-        ds = collection_filtered_sorted.wx.to_xarray(region=ee_rect, scale=resolution, crs='EPSG:4326', # crs = 4326 is lat,lon projection
-                            masked=True, nodata=-999999)
-        
-        if ind_pressure != None:
-            data.append(ds[ind_pressure])
-        data.append(ds[ind_u])
-        data.append(ds[ind_v])
-    """
