@@ -1,4 +1,5 @@
 import xarray as xr
+import numpy as np
 
 ''' Hyperparameters '''
 
@@ -12,12 +13,14 @@ g = 9.81 # Acceleration due to gravity in m/s^2
 
 A = 5000*7500 # Area in m^2
 
+R = 6378 # Radius of the Earth in meters
+
 METHANE_COL = "methane_mixing_ratio_bias_corrected_destriped"
 FACTOR = 1.25
 
 ''' Load the dataset '''
 
-ds = xr.open_dataset('data.nc')
+ds = xr.open_dataset('example_data/data/example_data_1.nc')
 
 '''Let's build the mask'''
 
@@ -52,3 +55,23 @@ mass_mean = ds.pressure[1 - mask]*ds.concentration_rate[1 - mask]*M_CH4/(g*M_air
 Q = (wind_speed)*A*xr.sum(ds.pressure[mask]*ds.concentration_rate[mask]*M_CH4/(g*M_air) - mass_mean) #The emission rate
 
 print (Q)
+
+def distance_harvesine(lat1d, lon1d, lat2d, lon2d):
+    lat1=lat1d*np.pi/180
+    lat2=lat2d*np.pi/180
+    lon1=lon1d*np.pi/180
+    lon2=lon2d*np.pi/180
+    return 2*R*np.arcsin(np.sqrt((np.sin((lat2-lat1)/2))**2 + np.cos(lat1)*np.cos(lat2)*(np.sin((lon2 - lon1)/2))**2))
+
+def area_calculation(ground_pixel, scanline, corner):
+    """
+    Calculate the area of a pixel in square meters based on latitude and longitude.
+    """
+    lat1 = ds.latitude[ground_pixel, scanline, corner[0]]
+    lon1 = ds.longitude[ground_pixel, scanline, corner[0]]
+    lat2 = ds.latitude[ground_pixel, scanline, corner[1]]
+    lon2 = ds.longitude[ground_pixel, scanline, corner[1]]
+    lat3 = ds.latitude[ground_pixel, scanline, corner[2]]
+    lon3 = ds.longitude[ground_pixel, scanline, corner[2]]
+
+    return distance_harvesine(lat1, lon1, lat2, lon2) * distance_harvesine(lat2, lon2, lat3, lon3)
