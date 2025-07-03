@@ -115,7 +115,7 @@ def tracer_methane(donnees):
     ax.coastlines()
     ax.add_feature(cfeature.BORDERS, linewidth=0.5)
     ax.add_feature(cfeature.LAND, facecolor='white')
-    ax.title('emission à la latitude'+ str(donnees.attrs['latitude_source']) + "et longitude" + str(donnees.attrs['longitude_source']))
+    plt.title('emission a la latitude'+ str(donnees.attrs['latitude_source']) + "et longitude" + str(donnees.attrs['longitude_source']))
     return(fig)
 
 def final(jour, lat, lon, emission, incertitude):
