@@ -12,9 +12,25 @@ g = 9.81 # Acceleration due to gravity in m/s^2
 
 A = 5000*7500 # Area in m^2
 
+METHANE_COL = "methane_mixing_ratio_bias_corrected_destriped"
+FACTOR = 1.25
+
 ''' Load the dataset '''
 
 ds = xr.open_dataset('data.nc')
+
+'''Let's build the mask'''
+
+def is_plume(methane, moy, std):
+    return (methane > (moy + FACTOR * std))
+
+def plume_mask(dataset):
+    """
+    Rajoute une colonne 'plume_mask' à dataset, indiquant si le pixel fait partie ou non d'un panache
+    """
+    moy, std = dataset[METHANE_COL].mean(), dataset[METHANE_COL].std()
+    dataset["plume_belonging"] = xr.apply_ufunc(is_plume, dataset.methane_mixing_ratio_bias_corrected_destriped, moy, std)
+
 
 '''Let's calculate the wind speed'''
 
