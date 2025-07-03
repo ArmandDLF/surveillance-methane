@@ -6,7 +6,6 @@ import os
 import numpy as np
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
-import destriping
 
 DATA_DIR = r'C:\Users\alfre\Desktop\Hackaton\TROPOMI_Mines\work_data\official_product'
 jour = 13
@@ -214,13 +213,19 @@ def final_optimal(jour, temps, lat, lon, emission, incertitude):
         "incertitude": incertitude
         }
     )
-    # on peut obtenir une sélection cercle en changeant juste la fin de nos fonctions finales
     resultat = selection_carre(bon_format, lat, lon)[1]
     return(resultat)
 
+#on peut obtenir une sélection cercle en changeant juste la fin de nos fonctions finales
 
+
+'''
+resultat = final(13, -25.6, 28.67, 29, 14)
+#resultat = final_optimal(13, -25.6, 28.67, 29, 14)
+tracer_methane(resultat)
+'''
 def panaches():
-    df=pd.read_csv('./work_data/SRON_Weekly_Methane_Plumes_2023_wk29_v20230724.csv', sep=',')
+    df=pd.read_csv(r'C:\Users\alfre\Desktop\Hackaton\TROPOMI_Mines\work_data\SRON_Weekly_Methane_Plumes_2023_wk29_v20230724.csv', sep=',')
     df = df[:3]
     for i in range(len(df)):
         jour = int(str(df['date'][i])[6:])
@@ -238,9 +243,10 @@ def panaches():
                 maxi = non_nan_count
                 arg_max = liste[j]
 
-        destriping.destripe(arg_max)
-        arg_max.to_netcdf("./work_data/traite/source"+str(i)+".nc")
+        arg_max.to_netcdf("source"+str(i)+".nc")
         
         fig1 = tracer_methane(arg_max)
-        fig1.savefig("./work_data/images/source"+str(i)+".jpg", format="jpeg", dpi=300)
+        fig1.savefig("source"+str(i)+".jpg", format="jpeg", dpi=300)
 
+
+panaches()
