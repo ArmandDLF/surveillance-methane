@@ -109,12 +109,13 @@ def tracer_methane(donnees):
                            antialiased=True,
                            cmap='jet',
                            transform=ccrs.PlateCarree(),
-                           vmin = 3.26,
-                           vmax = 3.28
+                           vmin = 3.25,
+                           vmax = 3.30
                            )
     ax.coastlines()
     ax.add_feature(cfeature.BORDERS, linewidth=0.5)
     ax.add_feature(cfeature.LAND, facecolor='white')
+    ax.title('emission à la latitude'+ str(donnees.attrs['latitude_source']) + "et longitude" + str(donnees.attrs['longitude_source']))
     return(fig)
 
 def final(jour, lat, lon, emission, incertitude):
