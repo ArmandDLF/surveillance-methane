@@ -121,6 +121,7 @@ def tracer_methane(donnees):
 def final(jour, lat, lon, emission, incertitude):
 
     files=os.listdir(DATA_DIR + '/' + 'data' + '/' + str(jour))
+    liste = []
     for i in range(len(files)):
         orbital=DATA_DIR + '/' + 'data' + '/' + str(jour) + '/' + files[i]
         ds = xr.open_dataset(orbital, group='PRODUCT')
@@ -140,37 +141,38 @@ def final(jour, lat, lon, emission, incertitude):
         if mask.any().item():
             chemin = orbital
 
-    ds1=xr.open_dataset(chemin, group='PRODUCT')
-    ds2=xr.open_dataset(chemin, group='PRODUCT/SUPPORT_DATA/DETAILED_RESULTS')
-    ds3=xr.open_dataset(chemin, group='PRODUCT/SUPPORT_DATA/GEOLOCATIONS')
-    ds4=xr.open_dataset(chemin, group='PRODUCT/SUPPORT_DATA/INPUT_DATA')
+            ds1=xr.open_dataset(chemin, group='PRODUCT')
+            ds2=xr.open_dataset(chemin, group='PRODUCT/SUPPORT_DATA/DETAILED_RESULTS')
+            ds3=xr.open_dataset(chemin, group='PRODUCT/SUPPORT_DATA/GEOLOCATIONS')
+            ds4=xr.open_dataset(chemin, group='PRODUCT/SUPPORT_DATA/INPUT_DATA')
 
-    bon_format = xr.Dataset(
-        {
-        "methane_mixing_ratio_bias_corrected": (["scanline", "ground_pixel"], ds1['methane_mixing_ratio_bias_corrected'][0].values),
-        "longitude_bounds": (['scanline', 'ground_pixel', 'corner'], ds3['longitude_bounds'][0].values),
-        "latitude_bounds": (['scanline', 'ground_pixel', 'corner'], ds3['latitude_bounds'][0].values),
-        "surface_pressure": (["scanline", "ground_pixel"], ds4['surface_pressure'][0].values),
-        "surface_albedo" : (["scanline", "ground_pixel"], ds2['surface_albedo_SWIR'][0].values),
-        "eastward_wind": (["scanline", "ground_pixel"], ds4['eastward_wind'][0].values),
-        "northward_wind": (["scanline", "ground_pixel"], ds4['northward_wind'][0].values)
-        },
-    coords={
-        "latitude": (['scanline', 'ground_pixel'], ds1['latitude'][0].values),
-        "longitude": (['scanline', 'ground_pixel'], ds1['longitude'][0].values),
-        "corner" : (['corner'], ds1['corner'].values) ,
-        "scanline": (['scanline'], ds1['scanline'].values),
-        "ground_pixel": (['ground_pixel'], ds1['ground_pixel'].values)
-    },
-    attrs={
-        "latitude_source": lat,
-        "longitude_source": lon,
-        "source_rate": emission,
-        "incertitude": incertitude
-        }
-    )
-    resultat = selection_carre(bon_format, lat, lon)[1]
-    return(resultat)
+            bon_format = xr.Dataset(
+                {
+                "methane_mixing_ratio_bias_corrected": (["scanline", "ground_pixel"], ds1['methane_mixing_ratio_bias_corrected'][0].values),
+                "longitude_bounds": (['scanline', 'ground_pixel', 'corner'], ds3['longitude_bounds'][0].values),
+                "latitude_bounds": (['scanline', 'ground_pixel', 'corner'], ds3['latitude_bounds'][0].values),
+                "surface_pressure": (["scanline", "ground_pixel"], ds4['surface_pressure'][0].values),
+                "surface_albedo" : (["scanline", "ground_pixel"], ds2['surface_albedo_SWIR'][0].values),
+                "eastward_wind": (["scanline", "ground_pixel"], ds4['eastward_wind'][0].values),
+                "northward_wind": (["scanline", "ground_pixel"], ds4['northward_wind'][0].values)
+                },
+            coords={
+                "latitude": (['scanline', 'ground_pixel'], ds1['latitude'][0].values),
+              "longitude": (['scanline', 'ground_pixel'], ds1['longitude'][0].values),
+                "corner" : (['corner'], ds1['corner'].values) ,
+                "scanline": (['scanline'], ds1['scanline'].values),
+                "ground_pixel": (['ground_pixel'], ds1['ground_pixel'].values)
+            },
+            attrs={
+                "latitude_source": lat,
+                "longitude_source": lon,
+                "source_rate": emission,
+                "incertitude": incertitude
+                }
+            )
+            resultat = selection_carre(bon_format, lat, lon)[1]
+            liste.append(resultat)
+    return liste
 
 def final_optimal(jour, temps, lat, lon, emission, incertitude):
 
@@ -224,16 +226,26 @@ tracer_methane(resultat)
 '''
 def panaches():
     df=pd.read_csv(r'C:\Users\alfre\Desktop\Hackaton\TROPOMI_Mines\work_data\SRON_Weekly_Methane_Plumes_2023_wk29_v20230724.csv', sep=',')
+    df = df[:3]
     for i in range(len(df)):
         jour = int(str(df['date'][i])[6:])
         lat=df['lat'][i]
         lon=df['lon'][i]
         emission=df['source_rate_t/h'][i]
         uncertainty=df['uncertainty_t/h'][i]
-        tab=final(jour, lat, lon, emission, uncertainty)
-        tab.to_netcdf("source"+str(i)+".nc")
+        liste = final(jour, lat, lon, emission, uncertainty)
         
-        fig1 = tracer_methane(tab)
+        arg_max = liste[0]
+        maxi = arg_max['methane_mixing_ratio_bias_corrected'].count().item()
+        for j in range(len(liste)):
+            non_nan_count = liste[j]['methane_mixing_ratio_bias_corrected'].count().item()
+            if non_nan_count>maxi:
+                maxi = non_nan_count
+                arg_max = liste[j]
+
+        arg_max.to_netcdf("source"+str(i)+".nc")
+        
+        fig1 = tracer_methane(arg_max)
         fig1.savefig("source"+str(i)+".jpg", format="jpeg", dpi=300)
 
 
