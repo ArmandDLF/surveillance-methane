@@ -271,7 +271,7 @@ def final_bremen(jour, lat, lon, emission, incertitude):
     return(bon_format)
 
 def panaches(SRON = True):
-    df=pd.read_csv('./work_data/SRON_Weekly_Methane_Plumes_2023_wk29_v20230724.csv', sep=',')
+    df=pd.read_csv('C:/Users/alfre/Desktop/Hackaton/surveillance-methane/work_data/SRON_Weekly_Methane_Plumes_2023_wk29_v20230724.csv', sep=',')
     for i in range(len(df)):
         jour = int(str(df['date'][i])[6:])
         lat=df['lat'][i]
@@ -291,13 +291,13 @@ def panaches(SRON = True):
         destriping.destripe(arg_max)
         
         if SRON : 
-            arg_max.to_netcdf("./work_data/SRON_traite/source"+str(i)+".nc")
+            arg_max.to_netcdf("C:/Users/alfre/Desktop/Hackaton/surveillance-methane/work_data/SRON_traite/source"+str(i)+".nc")
             fig1 = tracer_methane(arg_max)
-            fig1.savefig("./work_data/SRON_images/source"+str(i)+".jpg", format="jpeg", dpi=300)
+            fig1.savefig("C:/Users/alfre/Desktop/Hackaton/surveillance-methane/work_data/SRON_images/source"+str(i)+".jpg", format="jpeg", dpi=300)
         else :
-            arg_max.to_netcdf("./work_data/bremen_traite/source"+str(i)+".nc")
+            arg_max.to_netcdf("C:/Users/alfre/Desktop/Hackaton/surveillance-methane/work_data/bremen_traite/source"+str(i)+".nc")
             fig1 = tracer_methane(arg_max)
-            fig1.savefig("./work_data/bremen_images/source"+str(i)+".jpg", format="jpeg", dpi=300)
+            fig1.savefig("C:/Users/alfre/Desktop/Hackaton/surveillance-methane/work_data/bremen_images/source"+str(i)+".jpg", format="jpeg", dpi=300)
 
 panaches()
 panaches(False)
