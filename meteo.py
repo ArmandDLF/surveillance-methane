@@ -177,7 +177,7 @@ def get_fitted_meteo(grid):
     lat = grid.attrs['latitude']
     lon = grid.attrs['longitude']
     date = grid.attrs['date']
-    time = grid.attrs['time']
+    time = grid.attrs['time'].split(":")[0]  # Récupère l'heure 
 
     initialize_api()
     grid = grid.squeeze()  # Ensure grid is a 2D array
