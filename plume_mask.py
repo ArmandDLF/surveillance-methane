@@ -12,7 +12,7 @@ def source(dataset):
     Renvoie la ligne (le pixel) la plus proche de la source du dataset
     """
     
-    lat_s, lon_s = dataset.attrs['SRON plume source lat,lon']
+    lat_s, lon_s = dataset.attrs['latitude_source'], dataset.attrs['longitude_source']
     dataset["dist"] = xr.apply_ufunc(distance_harvesine, lat_s, lon_s, dataset.latitude, dataset.longitude)
 
     argmin = dataset["dist"].argmin(...)
