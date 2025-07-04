@@ -21,3 +21,13 @@ os
 numpy
 cartopy.crs
 destriping
+
+Utilisation du fichier général :
+
+Le fichier général est le seul qu'il est nécessaire d'ouvrir pour obtenir les courbes de comparaison.
+
+Ce fichier comprend trois paramètres principaux d'intérêt : 
+
+- skip_traitement est un booléen qui dit s'il est nécessaire de traiter les données de TROPOMI (satellite de SRON)  
+- ajout_donnes_mto est un booléen qui indique le téléchargement ou non des données météo du Google Earth Engine, et donc leur possible utilisation.  
+- donnes_tropomi est un booléen qui indique si l'on souhaite utiliser les données de TROPOMI ou celles de Bremen pour le traitement.
