@@ -8,10 +8,11 @@ import cartopy.feature as cfeature
 import destriping
 from scipy.interpolate import griddata
 
-DATA_DIR = r'C:/Users/eulal/cours-info/tutorial_TROPOMI_Mines/work_data/official_product'
-DATA_DIRB =r'C:/Users/eulal/cours-info/tutorial_TROPOMI_Mines/work_data/bremen_product/data/ESACCI-GHG-L2-CH4_CO-TROPOMI-WFMD-'
+DATA_DIR = r'C:/Users/eulal/cours-info/tutorial_TROPOMI_Mines/work_data/official_product' # à modifier avec votre chemin pour trouver les données
 Rterre = 6378  # km
 taillecarre = 250  # km
+
+### quelques fonctions utiles pour la suite
 
 def distance_harvesine(lat1d, lon1d, lat2d, lon2d):
     lat1=lat1d*np.pi/180
@@ -20,7 +21,26 @@ def distance_harvesine(lat1d, lon1d, lat2d, lon2d):
     lon2=lon2d*np.pi/180
     return 2*Rterre*np.arcsin(np.sqrt((np.sin((lat2-lat1)/2))**2 + np.cos(lat1)*np.cos(lat2)*(np.sin((lon2 - lon1)/2))**2))
 
+def apply_log10(data):
+    # let's be careful with zeros, and replace with NaNs
+    buf = np.copy(data)
+    buf[buf==0] = np.nan
+    out = np.log10(buf)
+    return out
+
+### les fonctions pour sélectionner les données autour des sources
+#on crée 2 fonctions de sélection pour pouvoir choisir la forme, dans le reste du document nous avons choisi d'utiliser selection_carre mais on pourrait tout à fait le remplacer par selection_cercle
+
 def selection_carre(ds, lat, lon):
+    '''
+            Parameters:
+                    ds : un tableau xarray
+                    lat : latitude de la source, centre de notre sélection
+                    lon : longitude de la source, centre de notre sélection
+
+            Returns:
+                    un xarray correspondant aux données d'un carré de 500 km de côté centré sur la source
+    '''
 
     lat_max = min(lat + (taillecarre * 180 / (Rterre * np.pi)), 90)
     lat_min = max(lat - (taillecarre * 180 / (Rterre * np.pi)), -90)
@@ -43,6 +63,15 @@ def selection_carre(ds, lat, lon):
     return ds, carre
 
 def selection_cercle(ds, lat, lon):
+    '''
+            Parameters:
+                    ds : un tableau xarray
+                    lat : latitude de la source, centre de notre sélection
+                    lon : longitude de la source, centre de notre sélection
+
+            Returns:
+                    un xarray correspondant aux données d'un cercle de rayon 250 km centré sur la source
+    '''
 
     mask = (
         distance_harvesine(lat, lon, ds['latitude'], ds['longitude']) <= 250
@@ -56,8 +85,50 @@ def selection_cercle(ds, lat, lon):
 
     return ds, carre
 
-def recherche_totale(lat, lon):
+### la fonction pour obtenir l'image qui correspond
 
+def tracer_methane(donnees):
+    '''
+        Parameters:
+                donnees : un tableau xarray
+
+        Returns:
+                une image du tableau representant le taux de méthane dans l'air
+    '''
+    fig = plt.figure(figsize = (7, 7))
+    ax = plt.subplot(1,1,1,projection=ccrs.PlateCarree())
+
+    donnees['log10_of_emissions'] = xr.apply_ufunc(apply_log10,
+                                        donnees.methane_mixing_ratio_bias_corrected_destriped)
+    donnees.log10_of_emissions.plot(x='longitude',
+                           y='latitude',
+                           antialiased=True,
+                           cmap='jet',
+                           transform=ccrs.PlateCarree(),
+                           vmin = 3.25,
+                           vmax = 3.30
+                           )
+    
+    # c'est trois lignes nous permettent de tracer les frontières et les côtes en ligne épaisse en plus sur notre image
+    ax.coastlines()
+    ax.add_feature(cfeature.BORDERS, linewidth=0.5)
+    ax.add_feature(cfeature.LAND, facecolor='white')
+    plt.title('emission a la latitude'+ str(donnees.attrs['latitude_source']) + "et longitude" + str(donnees.attrs['longitude_source']))
+    return(fig)
+
+### fonctions pour trouver le fichier contenant les informatinos sur 
+
+def recherche_totale(lat, lon):
+    '''
+    On parcourt toutes les orbites et tous les jours pour trouver le fichier qui contient le plus de données autour de la source à la position (lat, lon)
+
+        Parameters:
+                lat : latitude de la source, centre de notre sélection
+                lon : longitude de la source, centre de notre sélection
+
+        Returns:
+                un xarray correspondant aux données d'un carre de 500 km de côté centré sur la source 
+    '''
     liste = []
 
     for jour in range(13, 21):
@@ -92,35 +163,20 @@ def recherche_totale(lat, lon):
 
     return arg_max
 
-def apply_log10(data):
-    # let's be careful with zeros, and replace with NaNs
-    buf = np.copy(data)
-    buf[buf==0] = np.nan
-    out = np.log10(buf)
-    return out
-
-def tracer_methane(donnees):
-
-    fig = plt.figure(figsize = (7, 7))
-    ax = plt.subplot(1,1,1,projection=ccrs.PlateCarree())
-
-    donnees['log10_of_emissions'] = xr.apply_ufunc(apply_log10,
-                                        donnees.methane_mixing_ratio_bias_corrected_destriped)
-    donnees.log10_of_emissions.plot(x='longitude',
-                           y='latitude',
-                           antialiased=True,
-                           cmap='jet',
-                           transform=ccrs.PlateCarree(),
-                           vmin = 3.25,
-                           vmax = 3.30
-                           )
-    ax.coastlines()
-    ax.add_feature(cfeature.BORDERS, linewidth=0.5)
-    ax.add_feature(cfeature.LAND, facecolor='white')
-    plt.title('emission a la latitude'+ str(donnees.attrs['latitude_source']) + "et longitude" + str(donnees.attrs['longitude_source']))
-    return(fig)
-
 def final(jour, time, lat, lon, emission, incertitude):
+    '''
+    On sélectionne le bon jour = le bon dossier
+    On parcourt toutes les orbites pour trouver le fichier qui contient le plus de données autour de la source à la position (lat, lon)
+
+        Parameters:
+                lat : latitude de la source, centre de notre sélection
+                lon : longitude de la source, centre de notre sélection
+                jour : permet de trouvre le bon dossier
+                jour, time, emission et incertitude nous permettent de remplir les attributs du xaray
+
+        Returns:
+                un liste de xarray du même format que example_data et correspondant aux données des carrés autour de la latitude et de la longitude d'intérêt à chaque orbite
+    '''
 
     date = jour[6:]
     files=os.listdir(DATA_DIR + '/' + 'data' + '/' + str(date))
@@ -180,6 +236,19 @@ def final(jour, time, lat, lon, emission, incertitude):
     return liste
 
 def final_optimal(jour, time, lat, lon, emission, incertitude):
+    '''
+    On sélectionne le bon jour et la bonne orbite
+    attention se programme ne fonctionne pas toujours car il peut y avoir des décalages temporelles dans les données ou des conflits dus aux survols répétés de certaines zones
+
+        Parameters:
+                lat : latitude de la source, centre de notre sélection
+                lon : longitude de la source, centre de notre sélection
+                jour et time permettent de localiser le bon fichier
+                jour, time, emission et incertitude nous permettent de remplir les attributs du xaray
+
+        Returns:
+                un liste de xarray du même format que example_data et correspondant aux données des carrés autour de la latitude et de la longitude d'intérêt à chaque orbite 
+    '''
 
     date = jour[6:]
     files=os.listdir(DATA_DIR + '/' + 'data' + '/' + str(date))
@@ -225,7 +294,13 @@ def final_optimal(jour, time, lat, lon, emission, incertitude):
     resultat = selection_carre(bon_format, lat, lon)[1]
     return(resultat)
 
+#cette dernière fonction reutilse les fonctions précédentes pour traiter toutes les sources
+
 def panaches(SRON = True):
+    '''
+    Pour chaque source, la fonction enregistre l'image et le tableau autour de la source
+    '''
+
     df=pd.read_csv('./work_data/SRON_Weekly_Methane_Plumes_2023_wk29_v20230724.csv', sep=',')
     for i in range(len(df)):
         lat=df['lat'][i]
@@ -246,9 +321,9 @@ def panaches(SRON = True):
                     arg_max = liste[j]
 
             destriping.destripe(arg_max)
-            arg_max.to_netcdf("./work_data/SRON_traite/source"+str(i)+".nc")
+            arg_max.to_netcdf("./work_data/traite/source"+str(i)+".nc")
             fig1 = tracer_methane(arg_max)
-            fig1.savefig("./work_data/SRON_images/source"+str(i)+".jpg", format="jpeg", dpi=300)
+            fig1.savefig("./work_data/images/source"+str(i)+".jpg", format="jpeg", dpi=300)
         
         '''
         else :
@@ -259,10 +334,12 @@ def panaches(SRON = True):
             fig2.savefig("./work_data/bremen_images/sourceB"+str(i)+".jpg", format="jpeg", dpi=300)
         '''
 
-#panaches()
+panaches()
+
 #panaches(False) --> le traitement des fonctions bremen ne fonctionne malheureusement pas, si dessous les fonctions que on a écrit
 
 '''
+DATA_DIRB =r'C:/Users/eulal/cours-info/tutorial_TROPOMI_Mines/work_data/bremen_product/data/ESACCI-GHG-L2-CH4_CO-TROPOMI-WFMD-'
 def final_bremen(jour, time, lat, lon, emission, incertitude):
 
     chemin = DATA_DIRB + str(jour) + '-fv4.nc'
