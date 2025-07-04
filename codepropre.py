@@ -6,9 +6,10 @@ import os
 import numpy as np
 import cartopy.feature as cfeature
 import destriping
+from scipy.interpolate import griddata
 
-DATA_DIR = r'C:/Users/alfre/Desktop/Hackaton/TROPOMI_Mines/work_data/official_product'
-DATA_DIRB =r'C:/Users/alfre/Desktop/Hackaton/TROPOMI_Mines/work_data/bremen_product/data/ESACCI-GHG-L2-CH4_CO-TROPOMI-WFMD-'
+DATA_DIR = r'C:/Users/eulal/cours-info/tutorial_TROPOMI_Mines/work_data/official_product'
+DATA_DIRB =r'C:/Users/eulal/cours-info/tutorial_TROPOMI_Mines/work_data/bremen_product/data/ESACCI-GHG-L2-CH4_CO-TROPOMI-WFMD-'
 Rterre = 6378  # km
 taillecarre = 250  # km
 
@@ -120,6 +121,52 @@ def tracer_methane(donnees):
     return(fig)
 
 def tracer_methane_bremen(new_ds):
+
+    ds = xr.open_dataset("ton_fichier.nc")
+
+# Extraire les données
+    lat = ds['latitude']
+    lon = ds['longitude']
+    ch4 = ds['methane_mixing_ratio']  # Nom exact à adapter
+
+# Créer le masque de points valides
+    valid_mask = (~np.isnan(lat)) & (~np.isnan(lon))
+
+# Obtenir les indices des points
+    i_idx, j_idx = np.meshgrid(np.arange(lat.shape[1]), np.arange(lat.shape[0]))
+    points_valid = np.column_stack((
+        i_idx[valid_mask],
+        j_idx[valid_mask]
+    ))
+
+# Interpoler les lat/lon manquants
+    lat_interp = lat.copy()
+    lon_interp = lon.copy()
+
+    missing_mask = np.isnan(lat)
+
+    lat_interp.values[missing_mask] = griddata(
+        points_valid,
+        lat.values[valid_mask],
+        np.column_stack((i_idx[missing_mask], j_idx[missing_mask])),
+        method='linear'
+    )
+
+    lon_interp.values[missing_mask] = griddata(
+        points_valid,
+        lon.values[valid_mask],
+        np.column_stack((i_idx[missing_mask], j_idx[missing_mask])),
+        method='linear'
+    )
+
+# Ajouter les variables interpolées dans un nouveau Dataset
+    ds_interp = ds.copy()
+    ds_interp['latitude'] = lat_interp
+    ds_interp['longitude'] = lon_interp
+
+# Sauvegarder dans un nouveau fichier NetCDF
+    ds_interp.to_netcdf("donnees_interpolees.nc")
+
     new_ds_sorted = new_ds.sortby(['scanline', 'ground_pixel'])
     fig = plt.figure(figsize = (7, 7))
     ax = plt.subplot(1,1,1,projection=ccrs.PlateCarree())
@@ -139,12 +186,13 @@ def tracer_methane_bremen(new_ds):
     plt.show()
     return(fig)
 
-def final(jour, lat, lon, emission, incertitude):
+def final(jour, time, lat, lon, emission, incertitude):
 
-    files=os.listdir(DATA_DIR + '/' + 'data' + '/' + str(jour))
+    date = jour[6:]
+    files=os.listdir(DATA_DIR + '/' + 'data' + '/' + str(date))
     liste = []
     for i in range(len(files)):
-        orbital=DATA_DIR + '/' + 'data' + '/' + str(jour) + '/' + files[i]
+        orbital=DATA_DIR + '/' + 'data' + '/' + str(date) + '/' + files[i]
         ds = xr.open_dataset(orbital, group='PRODUCT')
    
         lat_max = min(lat + (taillecarre * 180 / (Rterre * np.pi)), 90)
@@ -188,22 +236,25 @@ def final(jour, lat, lon, emission, incertitude):
                 "latitude_source": lat,
                 "longitude_source": lon,
                 "source_rate": emission,
-                "incertitude": incertitude
+                "incertitude": incertitude, 
+                'date' : date, 
+                'time' : time
                 }
             )
             resultat = selection_carre(bon_format, lat, lon)[1]
             liste.append(resultat)
     return liste
 
-def final_optimal(jour, temps, lat, lon, emission, incertitude):
+def final_optimal(jour, time, lat, lon, emission, incertitude):
 
-    files=os.listdir(DATA_DIR + '/' + 'data' + '/' + str(jour))
+    date = jour[6:]
+    files=os.listdir(DATA_DIR + '/' + 'data' + '/' + str(date))
     tmax = 0
     i = 0
-    while temps > tmax:
+    while time > tmax:
         tmax = int(files[i][45:51])
         i += 1
-    chemin = DATA_DIR + '/' + 'data' + '/' + str(jour) + '/' + files[i-1]
+    chemin = DATA_DIR + '/' + 'data' + '/' + str(date) + '/' + files[i-1]
 
     ds1=xr.open_dataset(chemin, group='PRODUCT')
     ds2=xr.open_dataset(chemin, group='PRODUCT/SUPPORT_DATA/DETAILED_RESULTS')
@@ -231,14 +282,16 @@ def final_optimal(jour, temps, lat, lon, emission, incertitude):
         "latitude_source": lat,
         "longitude_source": lon,
         "source_rate": emission,
-        "incertitude": incertitude
+        "incertitude": incertitude, 
+        'date': date,
+        'time':time
         }
     )
     # on peut obtenir une sélection cercle en changeant juste la fin de nos fonctions finales
     resultat = selection_carre(bon_format, lat, lon)[1]
     return(resultat)
 
-def final_bremen(jour, lat, lon, emission, incertitude):
+def final_bremen(jour, time, lat, lon, emission, incertitude):
 
     chemin = DATA_DIRB + str(jour) + '-fv4.nc'
     ds=xr.open_dataset(chemin)
@@ -284,23 +337,26 @@ def final_bremen(jour, lat, lon, emission, incertitude):
         "latitude_source": lat,
         "longitude_source": lon,
         "source_rate": emission,
-        "incertitude": incertitude
+        "incertitude": incertitude, 
+        'date': jour, 
+        'time': time
         }
     )
    
     return(bon_format)
 
 def panaches(SRON = True):
-    df=pd.read_csv('C:/Users/alfre/Desktop/Hackaton/surveillance-methane/work_data/SRON_Weekly_Methane_Plumes_2023_wk29_v20230724.csv', sep=',')
+    df=pd.read_csv('./work_data/SRON_Weekly_Methane_Plumes_2023_wk29_v20230724.csv', sep=',')
     for i in range(len(df)):
         lat=df['lat'][i]
         lon=df['lon'][i]
         emission=df['source_rate_t/h'][i]
         uncertainty=df['uncertainty_t/h'][i]
-        
+        time=df['time_UTC'][i]
+        jour = str(df['date'][i])
+
         if SRON : 
-            jour = int(str(df['date'][i])[6:])
-            liste = final(jour, lat, lon, emission, uncertainty)
+            liste = final(jour, time, lat, lon, emission, uncertainty)
             arg_max = liste[0]
             maxi = arg_max['methane_mixing_ratio_bias_corrected'].count().item()
             for j in range(len(liste)):
@@ -310,15 +366,16 @@ def panaches(SRON = True):
                     arg_max = liste[j]
 
             destriping.destripe(arg_max)
-            arg_max.to_netcdf("C:/Users/alfre/Desktop/Hackaton/surveillance-methane/work_data/SRON_traite/source"+str(i)+".nc")
+            arg_max.to_netcdf("./work_data/SRON_traite/source"+str(i)+".nc")
             fig1 = tracer_methane(arg_max)
-            fig1.savefig("C:/Users/alfre/Desktop/Hackaton/surveillance-methane/work_data/SRON_images/source"+str(i)+".jpg", format="jpeg", dpi=300)
+            fig1.savefig("./work_data/SRON_images/source"+str(i)+".jpg", format="jpeg", dpi=300)
         
         else :
-            jour = int(df['date'][i])
-            resultat = final_bremen(jour, lat, lon, emission, uncertainty)
+            resultat = final_bremen(jour, time, lat, lon, emission, uncertainty)
             destriping.destripe(resultat)
-            resultat.to_netcdf("C:/Users/alfre/Desktop/Hackaton/surveillance-methane/work_data/bremen_traite/source"+str(i)+".nc")
+            resultat.to_netcdf("./work_data/bremen_traite/source"+str(i)+".nc")
             fig2 = tracer_methane_bremen(resultat)
-            fig2.savefig("C:/Users/alfre/Desktop/Hackaton/surveillance-methane/work_data/bremen_images/sourceB"+str(i)+".jpg", format="jpeg", dpi=300)
+            fig2.savefig("./work_data/bremen_images/sourceB"+str(i)+".jpg", format="jpeg", dpi=300)
 
+#panaches()
+#panaches(False)
