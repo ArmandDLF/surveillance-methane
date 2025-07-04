@@ -27,19 +27,19 @@ R = Rterre*1e3 # Radius of the Earth in meters
 
 '''Some useful functions to calculate the area of a pixel'''
 
-vdistance_harvesine = np.vectorize(distance_harvesine)
+vdistance_harvesine = np.vectorize(lambda x1,y1,x2,y2 : distance_harvesine(x1,y1,x2,y2) * 1e3) # Convert distance from km to m
 
 def area_calculation(latitude_bounds, longitude_bounds):
     """
     Calculate the area of a pixel in square meters based on latitude and longitude.
     """
 
-    lat1 = latitude_bounds[0,:,:]
-    lon1 = longitude_bounds[0,:,:]
-    lat2 = latitude_bounds[1,:,:]
-    lon2 = longitude_bounds[1,:,:]
-    lat3 = latitude_bounds[2,:,:]
-    lon3 = longitude_bounds[2,:,:]
+    lat1 = latitude_bounds[:,:,0]
+    lon1 = longitude_bounds[:,:,0]
+    lat2 = latitude_bounds[:,:,1]
+    lon2 = longitude_bounds[:,:,1]
+    lat3 = latitude_bounds[:,:,2]
+    lon3 = longitude_bounds[:,:,2]
 
     return vdistance_harvesine(lat1, lon1, lat2, lon2) * vdistance_harvesine(lat2, lon2, lat3, lon3)
 
@@ -57,19 +57,12 @@ def plume_area(ds):
     """
     return (ds.plume_belonging * ds.pixel_area).sum() # Area of the plume in m^2
 
-def wind_speed(ds):
-    """
-    Calculate wind speed from 10m wind data
-    """
-    
-    out = alpha_1*(ds.northward_wind**(2) + ds.eastward_wind**(2))**(1/2)
-    return out
 
 def add_wind_speed(ds):
     """
     Add a column 'wind_speed' to the dataset, indicating the wind speed in m/s
     """
-    ds['wind_speed'] = xr.apply_ufunc(wind_speed) # Calculate the wind speed from the 10m wind data
+    ds['wind_speed'] = alpha_1*(ds.northward_wind**(2) + ds.eastward_wind**(2))**(1/2)
     
 
 '''Let's calculate the emission rate'''
@@ -98,8 +91,8 @@ def emission_rate_with_uncertainties(ds, n):
     Calculate the emission rate in tons/hour with uncertainties
     """
     ds_configured = ds.copy()
-    add_pixel_area(ds_configured)
     add_wind_speed(ds_configured)
+    add_pixel_area(ds_configured)
 
     pressure_std = ds_configured.surface_pressure.std()
     methane_std = ds_configured.methane_mixing_ratio_bias_corrected_destriped.std()
@@ -113,7 +106,7 @@ def emission_rate_with_uncertainties(ds, n):
 
         factor_rd = rd.uniform(FACTOR_MIN, FACTOR_MAX) # Random factor for plume belonging
 
-        ds_configured = plume_mask(ds_configured, factor=factor_rd) #Creation of the plume mask with random factor
+        plume_mask(ds_configured, facteur=factor_rd) #Creation of the plume mask with random factor
 
         Plume_area_rd = (ds_configured.pixel_area*ds_configured.plume_mask).sum() # Area of the plume in m^2
 

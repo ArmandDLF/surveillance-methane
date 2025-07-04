@@ -20,7 +20,7 @@ if not skip_traitement:
 
 # lire chaque fichier dans ./work_data/traite/
 files = os.listdir("./work_data/traite/")
-files = [f for f in files if f.endswith('.nc')]
+files = ["./work_data/traite/" + f for f in files if f.endswith('.nc')]
 
 
 sources_emissions_sron = []
@@ -40,11 +40,11 @@ for i, file in enumerate(files):
     # Calcul émissions et incertitudes
 
     sources_emissions_sron.append(dataset.attrs['source_rate'])
-    sources_incertitudes_sron.append(dataset.attrs['incertitude_source'])
+    sources_incertitudes_sron.append(dataset.attrs['incertitude'])
 
     emi , inc =  prime.emission_rate_with_uncertainties(dataset, 30)
-    sources_incertitudes_cal.append(emi)
-    sources_incertitudes_cal(inc)
+    sources_emissions_cal.append(emi)
+    sources_incertitudes_cal.append(inc)
 
 
 # Plot des émissions calculées en fonction des émissions SRON avec incertitudes
