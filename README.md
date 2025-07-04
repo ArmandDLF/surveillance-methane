@@ -13,14 +13,14 @@ Pour cela, une implémentaion de la méthode de calcul par intégration discrèt
 
 ## Modules python requis
 
-pandas
-random
-xarray
-matplotlib.pyplot
-os
-numpy
-cartopy.crs
-scipy
+pandas  
+random  
+xarray  
+matplotlib.pyplot  
+os  
+numpy  
+cartopy.crs  
+scipy  
 
 ## Utilisation 
 
@@ -34,10 +34,10 @@ Ce fichier comprend trois paramètres principaux d'intérêt :
 
 ## Fichiers et utilité
 
-`codepropre.py` : Extraction et mise en forme des données brutes (étape 1)
-`etape1_bremen.py` : De même mais pour celles de Brême avec un format différent (étape 1 bis)
-`destriping.py` : Filtre appliqué sur les données pour enlever le phénomène de "stripes"
-`meteo.py` : Récupération des données météorologiques de Google Earth Engine (étape 2)
-`plume_mask.py` : Masque du panache de méthane (étape 3)
-`prime.py` : Calcul des émissions et incertitudes associées (étape 4)
-`general.py` : Workflow complet, dont le plot de comparaison (étape 5)
+`codepropre.py` : Extraction et mise en forme des données brutes (étape 1)  
+`etape1_bremen.py` : De même mais pour celles de Brême avec un format différent (étape 1 bis)  
+`destriping.py` : Filtre appliqué sur les données pour enlever le phénomène de "stripes"  
+`meteo.py` : Récupération des données météorologiques de Google Earth Engine (étape 2)  
+`plume_mask.py` : Masque du panache de méthane (étape 3)  
+`prime.py` : Calcul des émissions et incertitudes associées (étape 4)  
+`general.py` : Workflow complet, dont le plot de comparaison (étape 5)  
