@@ -334,7 +334,6 @@ def panaches(SRON = True):
             fig2.savefig("./work_data/bremen_images/sourceB"+str(i)+".jpg", format="jpeg", dpi=300)
         '''
 
-panaches()
 
 #panaches(False) --> le traitement des fonctions bremen ne fonctionne malheureusement pas, si dessous les fonctions que on a écrit
 
