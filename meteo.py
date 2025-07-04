@@ -14,7 +14,23 @@ SATELLITES["GEOS"] = ['NASA/GEOS-CF/v1/rpl/tavg1hr', 27750, "PS", "U10M", "V10M"
 #SATELLITES["GFS"] =["NOAA/GFS0P25", 27830, None, "u_component_of_wind_10m_above_ground", "v_component_of_wind_10m_above_ground"]
 
 
-def selection_carre(lat, lon):
+def selection_carre(lat : float, lon : float) -> list[float] :
+    """
+    Returns a list of coordinates that delimit a square of half size 250km, centered around (lat, long)
+
+    Parameters
+    ----------
+    lat : float
+        Latitude of the center point of the meteorological data
+    long : float
+        Longitude of the center point of the meteorological data
+
+    Returns
+    -------
+    list[float]
+        List of coordinates that delimit a square of half size 250km, centered around (lat, long)
+    
+    """
     
     lat_max = min(lat + (taillecarre * 180 / (Rterre * np.pi)), 90)
     lat_min = max(lat - (taillecarre * 180 / (Rterre * np.pi)), -90)
@@ -28,19 +44,44 @@ def selection_carre(lat, lon):
 
 
 def initialize_api():
-
+    """
+    Initializes the Earth Engine API. 
+    Requires to have a Google Earth 
+    """
     # initialize ee API library
     ee.Initialize()
     # initialize the wxee
     wxee.Initialize()
 
-
-"""The function now works, and allows the user to get the necessary meteo data, i.e. pressure and 10m-wind components around a (lat, long) point.
-A plotting function has been implemented via a boolean argument to allow visual representations."""
-
  
-def get_meteo(lat : float, long : float, date="2023-06-27", time=16, plot=False):
+def get_meteo(lat : float, long : float, date : str, time : int, plot=False) -> list[xr.Dataset] :
+    """
+    Returns a list of xarrays, each of them containing meteorological data from different models (ERA5 and GEOS at the moment).
+    Pixels size is different from one model to another.
+    Meteorological data stored is surface pressure and wind speed components
+    
+    Parameters
+    ----------
+    lat : float
+        Latitude of the center point of the meteorological data
+    long : float
+        Longitude of the center point of the meteorological data
+    date : str
+        Date of the meteorological data
+        Eg. : "2023-06-27"
+    time : int
+        Time of the day for the meteorological data
+        Eg. : 16 for 15:00
+    plot : bool
+        Plots the meteorological data if True
 
+
+    Returns
+    -------
+    DATA : list[xr.Dataset]
+        List of xarrays, each of them contains data related to a meteorological model (ERA5 and GEOS at the moment)
+    
+    """
     hour = time
     ext = selection_carre(lat, long)
     rectangle = [[ext[0],ext[2]],
@@ -59,10 +100,10 @@ def get_meteo(lat : float, long : float, date="2023-06-27", time=16, plot=False)
         ind_u, ind_v = SATELLITES[sat][3], SATELLITES[sat][4]
 
         ee_rect = ee.Geometry.Polygon(rectangle, None, False)
-        datenext="2023-06-28"
+        datenext = (datetime.strptime(date, "%Y-%m-%d") + timedelta(days=1)).strftime("%Y-%m-%d")
         ee_date1 = ee.Date(date)
         ee_date2 = ee.Date(datenext)
-
+    
         collection_filtered_sorted = (ee.ImageCollection(name)
                                 .filterBounds(ee_rect)
                                 .filterDate(ee_date1, ee_date2)
@@ -113,8 +154,24 @@ def get_meteo(lat : float, long : float, date="2023-06-27", time=16, plot=False)
     return DATA
 
 
-def interp_to_tropomi(DATA, grid):
+def interp_to_tropomi(DATA : list[xr.Dataset], grid : xr.Dataset):
+    """
+    Interpolates meteorological data from DATA xarrays to each pixel in grid
+
+    Parameters
+    ----------
+    DATA : list[xr.Dataset]
+        List of xarrays, each of them contains data related to a meteorological model (ERA5 and GEOS at the moment)
+    grid : xr.Dataset
+        Xarray provided by the reading of TROPOMI data, with a different meshgrid
+
+    Returns
+    -------
+    grid : xr.Dataset
+       Added meteorological variables contained in DATA to each pixel and for each model.
         
+    """
+    
     for i in range(len(DATA)):
         
         sat = SATS[i]
@@ -173,7 +230,21 @@ def interp_to_tropomi(DATA, grid):
     return grid
 
 
-def get_fitted_meteo(grid):
+def get_fitted_meteo(grid : xr.Dataset) -> xr.Dataset:
+    """
+    Function that adds meteorological data to grid, pixel by pixel.
+    
+    Parameters
+    ----------
+    grid : xr.Dataset
+        Xarray provided by the reading of TROPOMI data, with a different meshgrid
+
+    Returns
+    -------
+    grid : xr.Dataset
+       Added meteorological variables contained in DATA to each pixel and for each model.
+        
+    """
     lat = grid.attrs['latitude']
     lon = grid.attrs['longitude']
     date = grid.attrs['date']
@@ -186,8 +257,15 @@ def get_fitted_meteo(grid):
         grid)
 
 
-def tracer_variable(donnees, var, lat, long):
+def tracer_variable(data, var : str, lat : float, long : float):
+    """
+    Plots data.var, centered on (lat, long)
+    Parameters
+    ----------
+    donnees : xr.Dataset
+        Data to be plotted
 
+    """
     lon_min, lon_max, lat_min, lat_max = selection_carre(lat, long)
     img_extent = (lon_min, lon_max, lat_min, lat_max)
 
@@ -196,7 +274,7 @@ def tracer_variable(donnees, var, lat, long):
     ax.set_extent(img_extent, crs = ccrs.PlateCarree())
     ax.coastlines('10m', linewidth=1.5, color='black')
    
-    donnees[var].plot(x='longitude',
+    data[var].plot(x='longitude',
                            y='latitude',
                            antialiased=True,
                            transform=ccrs.PlateCarree()

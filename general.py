@@ -8,14 +8,13 @@ import xarray as xr
 
 """ Paramètres globaux """
 
-skip_traitement = True # Si False, nécessite de télécharger les données de TROPOMI
-ajout_donnes_mto = False
-donnes_tropomi = True
+skip_traitement = True # Si False, nécessite d'avoir les données de TROPOMI en local
+ajout_donnes_mto = False # Si True, nécessite de connecter le compte Google Earth Engine
+donnes_tropomi = True # Si False, utilise les données de Bremen
 
 """ Général """
 
 if not skip_traitement:
-
     codepropre.panaches(donnes_tropomi)
 
 # lire chaque fichier dans ./work_data/traite/
@@ -34,11 +33,10 @@ for i, file in enumerate(files):
     dataset = xr.open_dataset(file)
     
     if ajout_donnes_mto:
-        # Récupère wind et pression
+        # Rajoute les colonnes de wind et pression
         meteo.get_fitted_meteo(dataset)
 
     # Calcul émissions et incertitudes
-
     sources_emissions_sron.append(dataset.attrs['source_rate'])
     sources_incertitudes_sron.append(dataset.attrs['incertitude'])
 
