@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 import os
 import numpy as np
-import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 import destriping
 
@@ -301,6 +300,3 @@ def panaches(SRON = True):
             resultat.to_netcdf("C:/Users/alfre/Desktop/Hackaton/surveillance-methane/work_data/bremen_traite/source"+str(i)+".nc")
             fig1 = tracer_methane(resultat)
             fig1.savefig("C:/Users/alfre/Desktop/Hackaton/surveillance-methane/work_data/bremen_images/source"+str(i)+".jpg", format="jpeg", dpi=300)
-
-panaches()
-panaches(False)
