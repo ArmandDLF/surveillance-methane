@@ -8,8 +8,8 @@ import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 import destriping
 
-DATA_DIR = r'C:\Users\alfre\Desktop\Hackaton\TROPOMI_Mines\work_data\official_product'
-jour = 13
+DATA_DIR = r'C:/Users/alfre/Desktop/Hackaton/TROPOMI_Mines/work_data/official_product'
+DATA_DIRB =r'C:/Users/alfre/Desktop/Hackaton/TROPOMI_Mines/work_data/bremen_product/data/ESACCI-GHG-L2-CH4_CO-TROPOMI-WFMD-'
 Rterre = 6378  # km
 taillecarre = 250  # km
 
@@ -218,29 +218,89 @@ def final_optimal(jour, temps, lat, lon, emission, incertitude):
     resultat = selection_carre(bon_format, lat, lon)[1]
     return(resultat)
 
+def final_bremen(jour, lat, lon, emission, incertitude):
 
-def panaches():
-    df=pd.read_csv('./work_data/SRON_Weekly_Methane_Plumes_2023_wk29_v20230724.csv', sep=',')
-    df = df[:3]
+    chemin = DATA_DIRB + str(jour) + '-fv4.nc'
+    ds=xr.open_dataset(chemin)
+    donnees=selection_carre(ds, lat, lon)[1]
+    scan = donnees['scanline'].values
+    ground = donnees['ground_pixel'].values  
+    new_data_vars = {}
+    for var in donnees.data_vars:
+        if var not in ['scanline', 'ground_pixel']:
+            # Créer une grille 2D vide remplie de NaN (shape : lat x lon)
+            grid = np.full((len(scan), len(ground)), np.nan)
+            # Remplir la grille à partir des valeurs
+            for i in range(len(scan)):
+                scan_idx = np.where(scan == scan[i])[0][0]
+                ground_idx = np.where(ground == ground[i])[0][0]
+                if grid[scan_idx, ground_idx] == np.nan:
+                    grid[scan_idx, ground_idx] = ds[var].values[i]
+            new_data_vars[var] = (('scanline', 'ground_pixel'), grid)
+
+    new_ds = xr.Dataset(
+        data_vars=new_data_vars,
+        coords={
+            'ground_pixel': scan,
+            'scanline': ground
+        }
+    )
+
+    bon_format = xr.Dataset(
+        {
+        "methane_mixing_ratio_bias_corrected": (["scanline", "ground_pixel"], new_ds['xch4'].values),
+        "longitude_bounds": (['scanline', 'ground_pixel'], new_ds['longitude_corners'].values),
+        "latitude_bounds": (['scanline', 'ground_pixel'], new_ds['corners'].values),
+        "surface_pressure": (["scanline", "ground_pixel"], new_ds['pressure_levels'].values),
+        "surface_albedo" : (["scanline", "ground_pixel"], new_ds['apparent_albedo'][0].values),
+        },
+    coords={
+        "latitude": (['scanline', 'ground_pixel'], new_ds['latitude'].values),
+        "longitude": (['scanline', 'ground_pixel'], new_ds['longitude'].values),
+        "scanline": (['scanline'], new_ds['scanline'].values),
+        "ground_pixel": (['ground_pixel'], new_ds['ground_pixel'].values)
+    },
+    attrs={
+        "latitude_source": lat,
+        "longitude_source": lon,
+        "source_rate": emission,
+        "incertitude": incertitude
+        }
+    )
+   
+    return(bon_format)
+
+def panaches(SRON = True):
+    df=pd.read_csv('C:/Users/alfre/Desktop/Hackaton/surveillance-methane/work_data/SRON_Weekly_Methane_Plumes_2023_wk29_v20230724.csv', sep=',')
     for i in range(len(df)):
-        jour = int(str(df['date'][i])[6:])
         lat=df['lat'][i]
         lon=df['lon'][i]
         emission=df['source_rate_t/h'][i]
         uncertainty=df['uncertainty_t/h'][i]
-        liste = final(jour, lat, lon, emission, uncertainty)
         
-        arg_max = liste[0]
-        maxi = arg_max['methane_mixing_ratio_bias_corrected'].count().item()
-        for j in range(len(liste)):
-            non_nan_count = liste[j]['methane_mixing_ratio_bias_corrected'].count().item()
-            if non_nan_count>maxi:
-                maxi = non_nan_count
-                arg_max = liste[j]
+        if SRON : 
+            jour = int(str(df['date'][i])[6:])
+            liste = final(jour, lat, lon, emission, uncertainty)
+            arg_max = liste[0]
+            maxi = arg_max['methane_mixing_ratio_bias_corrected'].count().item()
+            for j in range(len(liste)):
+                non_nan_count = liste[j]['methane_mixing_ratio_bias_corrected'].count().item()
+                if non_nan_count>maxi:
+                    maxi = non_nan_count
+                    arg_max = liste[j]
 
-        destriping.destripe(arg_max)
-        arg_max.to_netcdf("./work_data/traite/source"+str(i)+".nc")
+            destriping.destripe(arg_max)
+            arg_max.to_netcdf("C:/Users/alfre/Desktop/Hackaton/surveillance-methane/work_data/SRON_traite/source"+str(i)+".nc")
+            fig1 = tracer_methane(arg_max)
+            fig1.savefig("C:/Users/alfre/Desktop/Hackaton/surveillance-methane/work_data/SRON_images/source"+str(i)+".jpg", format="jpeg", dpi=300)
         
-        fig1 = tracer_methane(arg_max)
-        fig1.savefig("./work_data/images/source"+str(i)+".jpg", format="jpeg", dpi=300)
+        else :
+            jour = int(df['date'][i])
+            resultat = final_bremen(jour, lat, lon, emission, uncertainty)
+            destriping.destripe(resultat)
+            resultat.to_netcdf("C:/Users/alfre/Desktop/Hackaton/surveillance-methane/work_data/bremen_traite/source"+str(i)+".nc")
+            fig1 = tracer_methane(resultat)
+            fig1.savefig("C:/Users/alfre/Desktop/Hackaton/surveillance-methane/work_data/bremen_images/source"+str(i)+".jpg", format="jpeg", dpi=300)
 
+panaches()
+panaches(False)
