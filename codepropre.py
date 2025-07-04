@@ -102,8 +102,9 @@ def tracer_methane(donnees):
 
     fig = plt.figure(figsize = (7, 7))
     ax = plt.subplot(1,1,1,projection=ccrs.PlateCarree())
+
     donnees['log10_of_emissions'] = xr.apply_ufunc(apply_log10,
-                                        donnees.methane_mixing_ratio_bias_corrected)
+                                        donnees.methane_mixing_ratio_bias_corrected_destriped)
     donnees.log10_of_emissions.plot(x='longitude',
                            y='latitude',
                            antialiased=True,
@@ -116,6 +117,26 @@ def tracer_methane(donnees):
     ax.add_feature(cfeature.BORDERS, linewidth=0.5)
     ax.add_feature(cfeature.LAND, facecolor='white')
     plt.title('emission a la latitude'+ str(donnees.attrs['latitude_source']) + "et longitude" + str(donnees.attrs['longitude_source']))
+    return(fig)
+
+def tracer_methane_bremen(new_ds):
+    new_ds_sorted = new_ds.sortby(['scanline', 'ground_pixel'])
+    fig = plt.figure(figsize = (7, 7))
+    ax = plt.subplot(1,1,1,projection=ccrs.PlateCarree())
+    new_ds_sorted['log10_of_emissions'] = xr.apply_ufunc(apply_log10,
+                                        new_ds_sorted.methane_mixing_ratio_bias_corrected_destriped)
+    new_ds_sorted.log10_of_emissions.plot(x='longitude',
+                           y='latitude',
+                           antialiased=True,
+                           cmap='jet',
+                           transform=ccrs.PlateCarree(),
+                           vmin = 3.25,
+                           vmax = 3.30
+                           )
+    ax.coastlines()
+    ax.add_feature(cfeature.BORDERS, linewidth=0.5)
+    ax.add_feature(cfeature.LAND, facecolor='white')
+    plt.show()
     return(fig)
 
 def final(jour, lat, lon, emission, incertitude):
@@ -240,8 +261,8 @@ def final_bremen(jour, lat, lon, emission, incertitude):
     new_ds = xr.Dataset(
         data_vars=new_data_vars,
         coords={
-            'ground_pixel': scan,
-            'scanline': ground
+            'ground_pixel': ground,
+            'scanline': scan
         }
     )
 
@@ -298,5 +319,8 @@ def panaches(SRON = True):
             resultat = final_bremen(jour, lat, lon, emission, uncertainty)
             destriping.destripe(resultat)
             resultat.to_netcdf("C:/Users/alfre/Desktop/Hackaton/surveillance-methane/work_data/bremen_traite/source"+str(i)+".nc")
-            fig1 = tracer_methane(resultat)
-            fig1.savefig("C:/Users/alfre/Desktop/Hackaton/surveillance-methane/work_data/bremen_images/source"+str(i)+".jpg", format="jpeg", dpi=300)
+            fig2 = tracer_methane_bremen(resultat)
+            fig2.savefig("C:/Users/alfre/Desktop/Hackaton/surveillance-methane/work_data/bremen_images/sourceB"+str(i)+".jpg", format="jpeg", dpi=300)
+
+#panaches()
+panaches(False)
