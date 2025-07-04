@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 import os
 import numpy as np
-import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 import destriping
 

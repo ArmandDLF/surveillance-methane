@@ -1,6 +1,7 @@
 import codepropre # Traitement des données SRON
 # import meteo # Traitement des données Google Earth Engine
 import prime # Calcul émission et incertitudes
+import time
 
 import os
 import xarray as xr
@@ -42,17 +43,28 @@ for i, file in enumerate(files):
     sources_emissions_sron.append(dataset.attrs['source_rate'])
     sources_incertitudes_sron.append(dataset.attrs['incertitude'])
 
-    emi , inc =  prime.emission_rate_with_uncertainties(dataset, 30)
+    emi , inc =  prime.emission_rate_with_uncertainties(dataset, 10)
     sources_emissions_cal.append(emi)
     sources_incertitudes_cal.append(inc)
 
 
 # Plot des émissions calculées en fonction des émissions SRON avec incertitudes
 import matplotlib.pyplot as plt
-plt.figure(figsize=(10, 6))
-plt.errorbar(sources_emissions_sron, sources_incertitudes_sron, fmt='o', label='SRON', color='blue')
-plt.errorbar(sources_emissions_cal, sources_incertitudes_cal, fmt='o', label='Calculé', color='red')
-plt.xlabel('Émissions (t/h)')
-plt.ylabel('Incertitudes (t/h)')
-plt.title('Émissions et incertitudes SRON vs Calculées')
-plt.plot()
+
+plt.figure(figsize=(10, 8))
+plt.errorbar(sources_emissions_sron, sources_emissions_cal, 
+             xerr=sources_incertitudes_sron, yerr=sources_incertitudes_cal, 
+             fmt='o', capsize=5, capthick=1, elinewidth=1, markersize=6, 
+             color='blue', ecolor='lightblue', label='Données')
+
+# Add a diagonal line for reference (perfect correlation)
+min_val = min(min(sources_emissions_sron), min(sources_emissions_cal))
+max_val = max(max(sources_emissions_sron), max(sources_emissions_cal))
+plt.plot([min_val, max_val], [min_val, max_val], 'k--', alpha=0.5, label='Corrélation parfaite')
+
+plt.xlabel('Émissions SRON (t/h)')
+plt.ylabel('Émissions Calculées (t/h)')
+plt.title('Comparaison des émissions: SRON vs Calculées')
+plt.legend()
+plt.grid(True, alpha=0.3)
+plt.show()
