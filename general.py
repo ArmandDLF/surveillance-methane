@@ -1,7 +1,6 @@
 import codepropre # Traitement des données SRON
-# import meteo # Traitement des données Google Earth Engine
+import meteo # Traitement des données Google Earth Engine
 import prime # Calcul émission et incertitudes
-import time
 
 import os
 import xarray as xr
@@ -11,13 +10,13 @@ import xarray as xr
 
 skip_traitement = True # Si False, nécessite de télécharger les données de TROPOMI
 ajout_donnes_mto = False
-
+donnes_tropomi = True
 
 """ Général """
 
 if not skip_traitement:
 
-    codepropre.panaches()
+    codepropre.panaches(donnes_tropomi)
 
 # lire chaque fichier dans ./work_data/traite/
 files = os.listdir("./work_data/traite/")
@@ -36,7 +35,7 @@ for i, file in enumerate(files):
     
     if ajout_donnes_mto:
         # Récupère wind et pression
-        pass
+        meteo.get_fitted_meteo(dataset)
 
     # Calcul émissions et incertitudes
 
