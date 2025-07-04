@@ -1,6 +1,6 @@
 import codepropre # Traitement des données SRON
-import meteo # Traitement des données Google Earth Engine
-import plume_mask # Détection des panaches de méthane
+# import meteo # Traitement des données Google Earth Engine
+import prime # Calcul émission et incertitudes
 
 import os
 import xarray as xr
@@ -37,12 +37,22 @@ for i, file in enumerate(files):
         # Récupère wind et pression
         pass
 
-    plume_mask.plume_mask(dataset)
-
     # Calcul émissions et incertitudes
 
     sources_emissions_sron.append(dataset.attrs['source_rate'])
     sources_incertitudes_sron.append(dataset.attrs['incertitude_source'])
 
+    emi , inc =  prime.emission_rate_with_uncertainties(dataset, 30)
+    sources_incertitudes_cal.append(emi)
+    sources_incertitudes_cal(inc)
 
 
+# Plot des émissions calculées en fonction des émissions SRON avec incertitudes
+import matplotlib.pyplot as plt
+plt.figure(figsize=(10, 6))
+plt.errorbar(sources_emissions_sron, sources_incertitudes_sron, fmt='o', label='SRON', color='blue')
+plt.errorbar(sources_emissions_cal, sources_incertitudes_cal, fmt='o', label='Calculé', color='red')
+plt.xlabel('Émissions (t/h)')
+plt.ylabel('Incertitudes (t/h)')
+plt.title('Émissions et incertitudes SRON vs Calculées')
+plt.plot()
