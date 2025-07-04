@@ -177,7 +177,11 @@ def interp_to_tropomi(DATA, grid):
     return grid
 
 
-def get_fitted_meteo(lat, lon, date, time, grid):
+def get_fitted_meteo(grid):
+    lat = grid.attrs['latitude']
+    lon = grid.attrs['longitude']
+    date = grid.attrs['date']
+    time = grid.attrs['time']
 
     initialize_api()
     grid = grid.squeeze()  # Ensure grid is a 2D array
