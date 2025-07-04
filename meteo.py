@@ -3,12 +3,8 @@ import wxee
 import numpy as np
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
-import scipy 
 import xarray as xr
-
-
-square = 250 #half-size of the square that will be studied in kilometers
-Rterre = 6378
+from codepropre import Rterre, taillecarre
 
 SATS = ["ERA5", "GEOS"]
 SATELLITES = {}
@@ -20,11 +16,11 @@ SATELLITES["GEOS"] = ['NASA/GEOS-CF/v1/rpl/tavg1hr', 27750, "PS", "U10M", "V10M"
 
 def selection_carre(lat, lon):
     
-    lat_max = min(lat + (square * 180 / (Rterre * np.pi)), 90)
-    lat_min = max(lat - (square * 180 / (Rterre * np.pi)), -90)
+    lat_max = min(lat + (taillecarre * 180 / (Rterre * np.pi)), 90)
+    lat_min = max(lat - (taillecarre * 180 / (Rterre * np.pi)), -90)
 
     lat_rad = lat * np.pi / 180
-    lon_delta = square * 180 / (Rterre * np.pi * np.cos(lat_rad))
+    lon_delta = taillecarre * 180 / (Rterre * np.pi * np.cos(lat_rad))
     lon_max = (lon + lon_delta + 180) % 360 - 180
     lon_min = (lon - lon_delta + 180) % 360 - 180
 
