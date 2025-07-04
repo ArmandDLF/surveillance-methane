@@ -13,7 +13,7 @@ jour = 13
 Rterre = 6378  # km
 taillecarre = 250  # km
 
-def distance(lat1d, lon1d, lat2d, lon2d):
+def distance_harvesine(lat1d, lon1d, lat2d, lon2d):
     lat1=lat1d*np.pi/180
     lat2=lat2d*np.pi/180
     lon1=lon1d*np.pi/180
@@ -45,7 +45,7 @@ def selection_carre(ds, lat, lon):
 def selection_cercle(ds, lat, lon):
 
     mask = (
-        distance(lat, lon, ds['latitude'], ds['longitude']) <= 250
+        distance_harvesine(lat, lon, ds['latitude'], ds['longitude']) <= 250
     )
 
     # Vérifier qu'au moins un point est dans le masque

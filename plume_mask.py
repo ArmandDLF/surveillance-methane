@@ -1,10 +1,9 @@
 import xarray as xr
 import numpy as np
 import scipy as sc
-from codepropre import distance
+from codepropre import distance_harvesine
 
 METHANE_COL = "methane_mixing_ratio_bias_corrected_destriped"
-FACTEUR = 1.25
 MAX_ITERATION = 20
 
 
@@ -14,14 +13,14 @@ def source(dataset):
     """
     
     lat_s, lon_s = dataset.attrs['SRON plume source lat,lon']
-    dataset["dist"] = xr.apply_ufunc(distance, lat_s, lon_s, dataset.latitude, dataset.longitude)
+    dataset["dist"] = xr.apply_ufunc(distance_harvesine, lat_s, lon_s, dataset.latitude, dataset.longitude)
 
     argmin = dataset["dist"].argmin(...)
     dataset.drop_vars(["dist"])
     return dataset.isel(argmin)
 
 
-def plume_mask(dataset):
+def plume_mask(dataset, facteur=1.25):
     """
     Rajoute une colonne 'plume_mask' à dataset, indiquant si le pixel fait partie ou non d'un panache
     """
@@ -33,7 +32,7 @@ def plume_mask(dataset):
     src_mask = dataset.longitude == src.longitude.data
     src_mask = src_mask.latitude == src.latitude.data
 
-    candidats = (dataset[METHANE_COL] > (moy_nouv + FACTEUR * std_nouv)) | src_mask
+    candidats = (dataset[METHANE_COL] > (moy_nouv + facteur * std_nouv)) | src_mask
     dataset["candidats"] = candidats
     dataset["source"] = src_mask
     
