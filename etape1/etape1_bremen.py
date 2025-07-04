@@ -5,40 +5,17 @@ import cartopy.crs as ccrs
 import numpy as np
 import os
 import cartopy.feature as cfeature
+import codepropre
 
 Rterre=6371 #km
 taillecarre=250 #km
-DATA_DIR =r'C:/Users/eulal/cours-info/tutorial_TROPOMI_Mines/work_data/bremen_product/data'
+DATA_DIRB =r'C:/Users/eulal/cours-info/tutorial_TROPOMI_Mines/work_data/bremen_product/data/ESACCI-GHG-L2-CH4_CO-TROPOMI-WFMD-20230713-fv4.nc'
 
-ds=xr.open_dataset(DATA_DIR)
-mask = (ds['latitude'] > 0) & (ds['latitude'] < 1)
-jour = 13
+ds=xr.open_dataset(DATA_DIRB)
 Rterre = 6378  # km
 taillecarre = 250  # km
 
-def selection_carre(ds, lat, lon):
-
-    lat_max = min(lat + (taillecarre * 180 / (Rterre * np.pi)), 90)
-    lat_min = max(lat - (taillecarre * 180 / (Rterre * np.pi)), -90)
-
-    lat_rad = lat * np.pi / 180
-    lon_delta = taillecarre * 180 / (Rterre * np.pi * np.cos(lat_rad))
-    lon_max = (lon + lon_delta + 180) % 360 - 180
-    lon_min = (lon - lon_delta + 180) % 360 - 180
-
-    mask = (
-        (ds['latitude'] >= lat_min) & (ds['latitude'] <= lat_max) &
-        (ds['longitude'] >= lon_min) & (ds['longitude'] <= lon_max)
-    )
-
-    if mask.any().item():
-        carre = ds.where(mask, drop=True)
-    else:
-        carre = None
-
-    return ds, carre
-
-donnees=selection_carre(ds, -30, 20)[1]
+donnees= codepropre.selection_carre(ds, -30, 20)[1]
 
 lats = donnees['latitude'].values
 lons = donnees['longitude'].values  
@@ -66,7 +43,7 @@ new_ds = xr.Dataset(
 )
 
 
-def tracer_methane(new_ds):
+def tracer_methane_bremen(new_ds):
     new_ds_sorted = new_ds.sortby(['latitude', 'longitude'])
     fig = plt.figure(figsize = (7, 7))
     ax = plt.subplot(1,1,1,projection=ccrs.PlateCarree())
@@ -84,4 +61,4 @@ def tracer_methane(new_ds):
     plt.show()
     return(fig)
 
-tracer_methane(new_ds)
+tracer_methane_bremen(new_ds)

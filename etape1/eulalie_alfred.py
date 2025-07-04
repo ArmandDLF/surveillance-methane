@@ -113,9 +113,6 @@ ds1.log10_of_emissions.plot(x='lon',
                            transform=ccrs.PlateCarree(),
                            vmin=-2,
                           vmax=5)
-<<<<<<< HEAD
-'''
-=======
 
 
 #### les trucs qui fonctionnent
@@ -207,4 +204,4 @@ def selection_cercle(jour, temps, lat, lon):
 
 selection_cercle(13, 10000, 80.0, 0.0)
 
->>>>>>> 079d3b6f98f78a34efce159372b683ccae6329fa
+'''
