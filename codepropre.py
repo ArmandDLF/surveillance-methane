@@ -120,72 +120,6 @@ def tracer_methane(donnees):
     plt.title('emission a la latitude'+ str(donnees.attrs['latitude_source']) + "et longitude" + str(donnees.attrs['longitude_source']))
     return(fig)
 
-def tracer_methane_bremen(new_ds):
-
-    ds = xr.open_dataset("ton_fichier.nc")
-
-# Extraire les données
-    lat = ds['latitude']
-    lon = ds['longitude']
-    ch4 = ds['methane_mixing_ratio']  # Nom exact à adapter
-
-# Créer le masque de points valides
-    valid_mask = (~np.isnan(lat)) & (~np.isnan(lon))
-
-# Obtenir les indices des points
-    i_idx, j_idx = np.meshgrid(np.arange(lat.shape[1]), np.arange(lat.shape[0]))
-    points_valid = np.column_stack((
-        i_idx[valid_mask],
-        j_idx[valid_mask]
-    ))
-
-# Interpoler les lat/lon manquants
-    lat_interp = lat.copy()
-    lon_interp = lon.copy()
-
-    missing_mask = np.isnan(lat)
-
-    lat_interp.values[missing_mask] = griddata(
-        points_valid,
-        lat.values[valid_mask],
-        np.column_stack((i_idx[missing_mask], j_idx[missing_mask])),
-        method='linear'
-    )
-
-    lon_interp.values[missing_mask] = griddata(
-        points_valid,
-        lon.values[valid_mask],
-        np.column_stack((i_idx[missing_mask], j_idx[missing_mask])),
-        method='linear'
-    )
-
-# Ajouter les variables interpolées dans un nouveau Dataset
-    ds_interp = ds.copy()
-    ds_interp['latitude'] = lat_interp
-    ds_interp['longitude'] = lon_interp
-
-# Sauvegarder dans un nouveau fichier NetCDF
-    ds_interp.to_netcdf("donnees_interpolees.nc")
-
-    new_ds_sorted = new_ds.sortby(['scanline', 'ground_pixel'])
-    fig = plt.figure(figsize = (7, 7))
-    ax = plt.subplot(1,1,1,projection=ccrs.PlateCarree())
-    new_ds_sorted['log10_of_emissions'] = xr.apply_ufunc(apply_log10,
-                                        new_ds_sorted.methane_mixing_ratio_bias_corrected_destriped)
-    new_ds_sorted.log10_of_emissions.plot(x='longitude',
-                           y='latitude',
-                           antialiased=True,
-                           cmap='jet',
-                           transform=ccrs.PlateCarree(),
-                           vmin = 3.25,
-                           vmax = 3.30
-                           )
-    ax.coastlines()
-    ax.add_feature(cfeature.BORDERS, linewidth=0.5)
-    ax.add_feature(cfeature.LAND, facecolor='white')
-    plt.show()
-    return(fig)
-
 def final(jour, time, lat, lon, emission, incertitude):
 
     date = jour[6:]
@@ -291,6 +225,44 @@ def final_optimal(jour, time, lat, lon, emission, incertitude):
     resultat = selection_carre(bon_format, lat, lon)[1]
     return(resultat)
 
+def panaches(SRON = True):
+    df=pd.read_csv('./work_data/SRON_Weekly_Methane_Plumes_2023_wk29_v20230724.csv', sep=',')
+    for i in range(len(df)):
+        lat=df['lat'][i]
+        lon=df['lon'][i]
+        emission=df['source_rate_t/h'][i]
+        uncertainty=df['uncertainty_t/h'][i]
+        time=df['time_UTC'][i]
+        jour = str(df['date'][i])
+
+        if SRON : 
+            liste = final(jour, time, lat, lon, emission, uncertainty)
+            arg_max = liste[0]
+            maxi = arg_max['methane_mixing_ratio_bias_corrected'].count().item()
+            for j in range(len(liste)):
+                non_nan_count = liste[j]['methane_mixing_ratio_bias_corrected'].count().item()
+                if non_nan_count>maxi:
+                    maxi = non_nan_count
+                    arg_max = liste[j]
+
+            destriping.destripe(arg_max)
+            arg_max.to_netcdf("./work_data/SRON_traite/source"+str(i)+".nc")
+            fig1 = tracer_methane(arg_max)
+            fig1.savefig("./work_data/SRON_images/source"+str(i)+".jpg", format="jpeg", dpi=300)
+        
+        '''
+        else :
+            resultat = final_bremen(jour, time, lat, lon, emission, uncertainty)
+            destriping.destripe(resultat)
+            resultat.to_netcdf("./work_data/bremen_traite/source"+str(i)+".nc")
+            fig2 = tracer_methane_bremen(resultat)
+            fig2.savefig("./work_data/bremen_images/sourceB"+str(i)+".jpg", format="jpeg", dpi=300)
+        '''
+
+#panaches()
+#panaches(False) --> le traitement des fonctions bremen ne fonctionne malheureusement pas, si dessous les fonctions que on a écrit
+
+'''
 def final_bremen(jour, time, lat, lon, emission, incertitude):
 
     chemin = DATA_DIRB + str(jour) + '-fv4.nc'
@@ -345,37 +317,58 @@ def final_bremen(jour, time, lat, lon, emission, incertitude):
    
     return(bon_format)
 
-def panaches(SRON = True):
-    df=pd.read_csv('./work_data/SRON_Weekly_Methane_Plumes_2023_wk29_v20230724.csv', sep=',')
-    for i in range(len(df)):
-        lat=df['lat'][i]
-        lon=df['lon'][i]
-        emission=df['source_rate_t/h'][i]
-        uncertainty=df['uncertainty_t/h'][i]
-        time=df['time_UTC'][i]
-        jour = str(df['date'][i])
 
-        if SRON : 
-            liste = final(jour, time, lat, lon, emission, uncertainty)
-            arg_max = liste[0]
-            maxi = arg_max['methane_mixing_ratio_bias_corrected'].count().item()
-            for j in range(len(liste)):
-                non_nan_count = liste[j]['methane_mixing_ratio_bias_corrected'].count().item()
-                if non_nan_count>maxi:
-                    maxi = non_nan_count
-                    arg_max = liste[j]
+def tracer_methane_bremen(new_ds):
 
-            destriping.destripe(arg_max)
-            arg_max.to_netcdf("./work_data/SRON_traite/source"+str(i)+".nc")
-            fig1 = tracer_methane(arg_max)
-            fig1.savefig("./work_data/SRON_images/source"+str(i)+".jpg", format="jpeg", dpi=300)
-        
-        else :
-            resultat = final_bremen(jour, time, lat, lon, emission, uncertainty)
-            destriping.destripe(resultat)
-            resultat.to_netcdf("./work_data/bremen_traite/source"+str(i)+".nc")
-            fig2 = tracer_methane_bremen(resultat)
-            fig2.savefig("./work_data/bremen_images/sourceB"+str(i)+".jpg", format="jpeg", dpi=300)
+    lat = new_ds['latitude']
+    lon = new_ds['longitude']
+    valid_mask = (~np.isnan(lat)) & (~np.isnan(lon))
 
-#panaches()
-#panaches(False)
+    i_idx, j_idx = np.meshgrid(np.arange(lat.shape[1]), np.arange(lat.shape[0]))
+    points_valid = np.column_stack((
+        i_idx[valid_mask],
+        j_idx[valid_mask]
+    ))
+
+    lat_interp = lat.copy()
+    lon_interp = lon.copy()
+
+    missing_mask = np.isnan(lat)
+
+    lat_interp.values[missing_mask] = griddata(
+        points_valid,
+        lat.values[valid_mask],
+        np.column_stack((i_idx[missing_mask], j_idx[missing_mask])),
+        method='linear'
+    )
+
+    lon_interp.values[missing_mask] = griddata(
+        points_valid,
+        lon.values[valid_mask],
+        np.column_stack((i_idx[missing_mask], j_idx[missing_mask])),
+        method='linear'
+    )
+
+    ds_interp = new_ds.copy()
+    ds_interp['latitude'] = lat_interp
+    ds_interp['longitude'] = lon_interp
+
+    new_ds_sorted = ds_interp.sortby(['scanline', 'ground_pixel'])
+    fig = plt.figure(figsize = (7, 7))
+    ax = plt.subplot(1,1,1,projection=ccrs.PlateCarree())
+    new_ds_sorted['log10_of_emissions'] = xr.apply_ufunc(apply_log10,
+                                        new_ds_sorted.methane_mixing_ratio_bias_corrected_destriped)
+    new_ds_sorted.log10_of_emissions.plot(x='longitude',
+                           y='latitude',
+                           antialiased=True,
+                           cmap='jet',
+                           transform=ccrs.PlateCarree(),
+                           vmin = 3.25,
+                           vmax = 3.30
+                           )
+    ax.coastlines()
+    ax.add_feature(cfeature.BORDERS, linewidth=0.5)
+    ax.add_feature(cfeature.LAND, facecolor='white')
+    plt.show()
+    return(fig)
+'''
