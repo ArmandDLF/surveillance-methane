@@ -250,9 +250,9 @@ def final_bremen(jour, lat, lon, emission, incertitude):
         {
         "methane_mixing_ratio_bias_corrected": (["scanline", "ground_pixel"], new_ds['xch4'].values),
         "longitude_bounds": (['scanline', 'ground_pixel'], new_ds['longitude_corners'].values),
-        "latitude_bounds": (['scanline', 'ground_pixel'], new_ds['corners'].values),
+        "latitude_bounds": (['scanline', 'ground_pixel'], new_ds['latitude_corners'].values),
         "surface_pressure": (["scanline", "ground_pixel"], new_ds['pressure_levels'].values),
-        "surface_albedo" : (["scanline", "ground_pixel"], new_ds['apparent_albedo'][0].values),
+        "surface_albedo" : (["scanline", "ground_pixel"], new_ds['apparent_albedo'].values),
         },
     coords={
         "latitude": (['scanline', 'ground_pixel'], new_ds['latitude'].values),
@@ -303,4 +303,4 @@ def panaches(SRON = True):
             fig1.savefig("C:/Users/alfre/Desktop/Hackaton/surveillance-methane/work_data/bremen_images/source"+str(i)+".jpg", format="jpeg", dpi=300)
 
 panaches()
-panaches(False)
+#panaches(False)
