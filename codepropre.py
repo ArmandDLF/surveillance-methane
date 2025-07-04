@@ -322,5 +322,3 @@ def panaches(SRON = True):
             fig2 = tracer_methane_bremen(resultat)
             fig2.savefig("C:/Users/alfre/Desktop/Hackaton/surveillance-methane/work_data/bremen_images/sourceB"+str(i)+".jpg", format="jpeg", dpi=300)
 
-#panaches()
-panaches(False)

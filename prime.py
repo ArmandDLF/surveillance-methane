@@ -62,7 +62,7 @@ def add_wind_speed(ds):
     """
     Add a column 'wind_speed' to the dataset, indicating the wind speed in m/s
     """
-    ds['wind_speed'] = alpha_1*(ds.northward_wind**(2) + ds.eastward_wind**(2))**(1/2)
+    ds['wind_speed'] = (ds.northward_wind**(2) + ds.eastward_wind**(2))**(1/2)
     
 
 '''Let's calculate the emission rate'''
@@ -82,7 +82,7 @@ def calculate_emission_rate(ds):
     
     wind_speed_mean = ds_configured.wind_speed.where(mask).mean()*(3.6*1e3) # Mean wind speed in the plume in m/h
     
-    Q = ((wind_speed_mean)/(np.sqrt(plume_area(ds_configured))))*(ds_configured.pixel_area.where(mask)*ds_configured.surface_pressure.where(mask)*(ds_configured.methane_mixing_ratio_bias_corrected_destriped.where(mask) - concentration_rate_mean_ppb)).sum()*1e-9*M_CH4*1e-3/(g*M_air) # Emission rate in tons/hour
+    Q = alpha_1*((wind_speed_mean)/(np.sqrt(plume_area(ds_configured))))*(ds_configured.pixel_area.where(mask)*ds_configured.surface_pressure.where(mask)*(ds_configured.methane_mixing_ratio_bias_corrected_destriped.where(mask) - concentration_rate_mean_ppb)).sum()*1e-9*M_CH4*1e-3/(g*M_air) # Emission rate in tons/hour
     
     return Q.data
 
